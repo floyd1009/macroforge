@@ -221,7 +221,21 @@ function ProfileCard({ profile }: { profile: Profile }) {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Protein g/kg">
+          <Field
+          label="How you weigh food"
+          hint="Cooked meat has lost water, so 150 g cooked came from ~208 g raw and carries about 28% more protein. Getting this wrong is the single largest silent error in most trackers."
+        >
+          <Segmented
+            options={[
+              { value: 'cooked' as const, label: 'Cooked' },
+              { value: 'raw' as const, label: 'Raw' },
+            ]}
+            value={profile.weighsFood}
+            onChange={(v) => void save({ weighsFood: v })}
+          />
+        </Field>
+
+        <Field label="Protein g/kg">
             <Input
               type="text"
               inputMode="decimal"

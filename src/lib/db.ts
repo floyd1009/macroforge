@@ -69,6 +69,7 @@ export const DEFAULT_PROFILE: Profile = {
   manualTargets: null,
   proteinPerKg: 2.0,
   fatPerKg: 0.8,
+  weighsFood: 'cooked',
   units: 'metric',
   locale: 'en',
   createdAt: 0,
@@ -88,7 +89,10 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 export async function getProfile(): Promise<Profile> {
-  return (await db.profile.get('me')) ?? DEFAULT_PROFILE
+  const p = await db.profile.get('me')
+  // Merge so a field added in a later release is never `undefined` on a
+  // device that already has a stored profile.
+  return p ? { ...DEFAULT_PROFILE, ...p } : DEFAULT_PROFILE
 }
 
 export async function getSettings(): Promise<Settings> {

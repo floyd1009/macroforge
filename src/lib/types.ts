@@ -346,6 +346,16 @@ export interface Profile {
   manualTargets?: MacroTargets | null
   proteinPerKg: number
   fatPerKg: number
+  /**
+   * Whether food is normally weighed raw or after cooking.
+   *
+   * This is not cosmetic. Logging 150 g of *cooked* chicken against a raw
+   * database entry under-counts protein by roughly 28 %, because cooking
+   * drives off water and concentrates everything else. Knowing which the user
+   * means lets search prefer the right variant and the portion sheet default
+   * to the right conversion.
+   */
+  weighsFood: 'raw' | 'cooked'
   units: 'metric' | 'imperial'
   locale: 'en' | 'de'
   createdAt: number

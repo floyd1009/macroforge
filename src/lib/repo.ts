@@ -12,6 +12,7 @@ import {
 import type {
   Confidence,
   FoodSource,
+  FoodState,
   Provenance,
   EntryMethod,
   Food,
@@ -365,6 +366,7 @@ export async function saveWeight(date: DateKey, kg: number, bodyFatPct?: number)
 
 interface IndexEntry {
   id: string
+  state: FoodState
   /** Lowercased "name brand nameDe", pre-joined for substring matching. */
   hay: string
   /** Lowercased primary name, for prefix scoring. */
@@ -396,6 +398,7 @@ async function getIndex(): Promise<IndexEntry[]> {
       id: f.id,
       hay: `${f.name} ${f.nameDe ?? ''} ${f.brand ?? ''}`.toLowerCase(),
       name: (f.name || f.nameDe || '').toLowerCase(),
+      state: f.state,
       source: f.source,
       verified: f.verified,
       favorite: f.favorite ?? false,
@@ -406,7 +409,12 @@ async function getIndex(): Promise<IndexEntry[]> {
   return searchIndex
 }
 
-function scoreEntry(e: IndexEntry, q: string, tokens: string[]): number {
+function scoreEntry(
+  e: IndexEntry,
+  q: string,
+  tokens: string[],
+  prefers: 'raw' | 'cooked',
+): number {
   // Every query token must appear somewhere, so "chicken raw" cannot match a
   // food that is only "chicken".
   for (const t of tokens) if (!e.hay.includes(t)) return -1
@@ -440,6 +448,18 @@ function scoreEntry(e: IndexEntry, q: string, tokens: string[]): number {
   else if (e.source === 'bls') s += 8
   if (e.verified) s += 5
 
+  // BLS ships raw and cooked variants of the same food side by side. Surface
+  // the one matching how this user actually weighs, unless they typed the
+  // other state explicitly.
+  const asked = tokens.some((t) => /raw|uncooked/.test(t))
+    ? 'raw'
+    : tokens.some((t) => /cook|boil|fried|roast|grill|baked|steam/.test(t))
+      ? 'cooked'
+      : null
+  const target = asked ?? prefers
+  if (e.state === target) s += 16
+  else if (e.state !== 'as_sold') s -= 6
+
   return s
 }
 
@@ -452,12 +472,13 @@ export async function searchLocalFoods(query: string, limit = 30): Promise<Food[
     return recent.filter((f) => !f.deleted && f.lastUsedAt).slice(0, limit)
   }
 
-  const index = await getIndex()
+  const [index, profile] = await Promise.all([getIndex(), getProfile()])
   const tokens = q.split(/\s+/).filter(Boolean)
+  const prefers = profile.weighsFood ?? 'cooked'
 
   const scored: Array<{ id: string; s: number }> = []
   for (const e of index) {
-    const s = scoreEntry(e, q, tokens)
+    const s = scoreEntry(e, q, tokens, prefers)
     if (s >= 0) scored.push({ id: e.id, s })
   }
   scored.sort((a, b) => b.s - a.s)

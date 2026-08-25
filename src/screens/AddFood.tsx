@@ -6,6 +6,8 @@ import { MacroChips } from '../components/MacroBars'
 import { todayKey } from '../lib/date'
 import { altName, kcal as fmtKcal, num } from '../lib/format'
 import { scale } from '../lib/nutrition'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { getProfile } from '../lib/db'
 import { addEntry, searchLocalFoods, upsertFood } from '../lib/repo'
 import { MEAL_SLOTS, type Food, type MealSlot } from '../lib/types'
 import { OffError, isOnline, searchProducts, type NormalisedProduct } from '../services/openfoodfacts'
@@ -163,6 +165,11 @@ export default function AddFood() {
                       <span className="truncate text-[0.6875rem] text-txt-4">{altName(food)}</span>
                     )}
                     {food.retailer && <Badge tone="brand">{food.retailer}</Badge>}
+                    {/* Raw vs cooked changes the numbers by ~30% for meat, so
+                        it belongs on the row, not buried in the detail sheet. */}
+                    {food.state !== 'as_sold' && (
+                      <Badge tone={food.state === 'cooked' ? 'ok' : 'neutral'}>{food.state}</Badge>
+                    )}
                     {source === 'local' ? (
                       <Badge>
                         <HardDrive size={9} /> local
@@ -202,11 +209,15 @@ export function PortionSheet({
   onClose: () => void
   onDone: () => void
 }) {
+  const profile = useLiveQuery(() => getProfile(), [])
   const [meal, setMeal] = useState<MealSlot>(currentMeal())
   const defaultServing = food.servings.find((s) => s.isDefault) ?? food.servings[0]
   const [servingLabel, setServingLabel] = useState(defaultServing?.label ?? '')
   const [count, setCount] = useState('1')
-  const [state, setState] = useState<'raw' | 'cooked'>(food.state === 'cooked' ? 'cooked' : 'raw')
+  const [state, setState] = useState<'raw' | 'cooked' | null>(null)
+  // Default to however this user says they weigh, not to whatever state the
+  // database row happens to be stored in.
+  const weighedAs = state ?? profile?.weighsFood ?? 'cooked'
 
   const serving = food.servings.find((s) => s.label === servingLabel) ?? defaultServing
   const qty = Number(count.replace(',', '.')) || 0
@@ -215,8 +226,8 @@ export function PortionSheet({
   // If the entry is weighed in a different state than the database row, convert.
   const needsYield = food.yieldFactor != null && food.state !== 'as_sold'
   const effectiveGrams =
-    needsYield && state !== food.state
-      ? state === 'cooked'
+    needsYield && weighedAs !== food.state
+      ? weighedAs === 'cooked'
         ? rawGrams / food.yieldFactor!
         : rawGrams * food.yieldFactor!
       : rawGrams
@@ -285,7 +296,7 @@ export function PortionSheet({
                 { value: 'raw' as const, label: 'Raw' },
                 { value: 'cooked' as const, label: 'Cooked' },
               ]}
-              value={state}
+              value={weighedAs}
               onChange={setState}
             />
             <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-txt-3">

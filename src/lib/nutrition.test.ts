@@ -162,6 +162,7 @@ const profile: Profile = {
   manualTargets: null,
   proteinPerKg: 2.0,
   fatPerKg: 0.8,
+  weighsFood: 'cooked',
   units: 'metric',
   locale: 'de',
   createdAt: 0,

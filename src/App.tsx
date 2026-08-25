@@ -1,10 +1,11 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { TabBar } from './components/TabBar'
 import { Spinner } from './components/ui'
 import { requestPersistence } from './lib/db'
 import { seedIfEmpty } from './data/seed'
 import { importBls } from './data/bls'
+import { Onboarding, needsOnboarding } from './screens/Onboarding'
 
 const Today = lazy(() => import('./screens/Today'))
 const AddFood = lazy(() => import('./screens/AddFood'))
@@ -24,6 +25,8 @@ function Loading() {
 }
 
 export default function App() {
+  const [onboarding, setOnboarding] = useState(needsOnboarding)
+
   useEffect(() => {
     // Ask iOS not to evict the database, and load the staples immediately so
     // the app is usable on first paint.
@@ -46,6 +49,8 @@ export default function App() {
       }
     })
   }, [])
+
+  if (onboarding) return <Onboarding onDone={() => setOnboarding(false)} />
 
   return (
     // HashRouter, not BrowserRouter: GitHub Pages serves static files with no
