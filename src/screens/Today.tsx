@@ -10,9 +10,9 @@ import { useDayPlan } from '../lib/useDb'
 import { MEAL_SLOTS, PROVENANCE_ERROR, type LogEntry, type MealSlot } from '../lib/types'
 
 const MEAL_LABELS: Record<MealSlot, string> = {
-  breakfast: 'Frühstück',
-  lunch: 'Mittagessen',
-  dinner: 'Abendessen',
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
   snack: 'Snacks',
 }
 
@@ -24,7 +24,7 @@ export default function Today() {
 
   if (!plan) {
     return (
-      <Screen title="Heute">
+      <Screen title="Today">
         <div className="mt-6 space-y-3">
           <div className="skeleton h-32 rounded-card" />
           <div className="skeleton h-40 rounded-card" />
@@ -56,15 +56,15 @@ export default function Today() {
           {humanDate(date)}
         </button>
       }
-      subtitle={new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+      subtitle={new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
       left={
-        <IconButton label="Vorheriger Tag" onClick={() => setDate(addDays(date, -1))}>
+        <IconButton label="Previous day" onClick={() => setDate(addDays(date, -1))}>
           <ChevronLeft size={20} />
         </IconButton>
       }
       right={
         <IconButton
-          label="Nächster Tag"
+          label="Next day"
           disabled={isFuture(addDays(date, 1))}
           className="disabled:opacity-25"
           onClick={() => setDate(addDays(date, 1))}
@@ -85,22 +85,22 @@ export default function Today() {
       <SectionTitle
         action={
           <span className="text-[0.6875rem] text-txt-3">
-            {entries.length} {entries.length === 1 ? 'Eintrag' : 'Einträge'}
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
           </span>
         }
       >
-        Heute gegessen
+        Eaten today
       </SectionTitle>
 
       {byMeal.length === 0 ? (
         <Card className="py-2">
           <EmptyState
             icon={<Plus size={28} />}
-            title="Noch nichts protokolliert"
-            body="Foto, Diktat, Barcode oder Suche — was am schnellsten geht."
+            title="Nothing logged yet"
+            body="Photo, dictation, barcode or search — whichever is quickest."
             action={
               <Button variant="primary" onClick={() => navigate('/add')}>
-                Essen hinzufügen
+                Add food
               </Button>
             }
           />
@@ -119,22 +119,22 @@ export default function Today() {
             className="text-[0.6875rem] font-medium text-brand-text"
             onClick={() => setWeightOpen(true)}
           >
-            Eintragen
+            Log it
           </button>
         }
       >
-        Gewicht & Verbrauch
+        Weight & expenditure
       </SectionTitle>
 
       <Card className="p-4">
         {currentKg == null ? (
           <EmptyState
             icon={<Scale size={26} />}
-            title="Noch keine Wiegung"
-            body="Ohne Gewichtsverlauf kann dein echter Verbrauch nicht berechnet werden — nur geschätzt."
+            title="No weigh-in yet"
+            body="Without weight history your real expenditure can only be guessed at, not measured."
             action={
               <Button variant="primary" onClick={() => setWeightOpen(true)}>
-                Gewicht eintragen
+                Log weight
               </Button>
             }
           />
@@ -142,31 +142,34 @@ export default function Today() {
           <>
             <div className="flex items-end justify-between gap-4">
               <div>
-                <div className="text-2xl font-bold leading-none">{fmtKg(currentKg)} kg</div>
-                <div className="mt-1.5 text-xs text-txt-3">
+                <div className="numeric text-[1.75rem] font-extrabold leading-none">
+                  {fmtKg(currentKg)}
+                  <span className="ml-1 text-base font-bold text-txt-3">kg</span>
+                </div>
+                <div className="mt-1.5 text-xs font-semibold text-txt-3">
                   Trend {trendKg != null ? `${fmtKg(trendKg)} kg` : '–'}
                 </div>
               </div>
               {expenditure.daysOfData > 0 && (
                 <div className="text-right">
-                  <div className="text-sm font-semibold tabular-nums">
-                    {signed(expenditure.slopeKgPerWeek, 'de', 2)} kg
+                  <div className="numeric text-sm font-extrabold">
+                    {signed(expenditure.slopeKgPerWeek, 'en', 2)} kg
                   </div>
-                  <div className="mt-1 text-[0.6875rem] text-txt-3">pro Woche</div>
+                  <div className="label-micro mt-1.5 text-[0.5625rem] text-txt-3">per week</div>
                 </div>
               )}
             </div>
 
             <div className="mt-4 border-t border-line pt-3.5">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[0.8125rem] text-txt-2">Verbrauch</span>
-                <span className="text-[0.9375rem] font-semibold tabular-nums">
+                <span className="text-[0.8125rem] font-semibold text-txt-2">Expenditure</span>
+                <span className="numeric text-[0.9375rem] font-extrabold">
                   {fmtKcal(expenditure.tdee)} kcal
                 </span>
               </div>
               <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-txt-3">
                 {expenditure.note}
-                {expenditure.daysOfData > 0 && ` · ${expenditure.daysOfData} Tage Daten`}
+                {expenditure.daysOfData > 0 && ` · ${expenditure.daysOfData} days of data`}
               </p>
             </div>
           </>
@@ -185,10 +188,10 @@ export default function Today() {
 
 function QuickActions({ onPick }: { onPick: (path: string) => void }) {
   const actions = [
-    { path: '/photo', icon: Camera, label: 'Foto' },
-    { path: '/voice', icon: Mic, label: 'Diktat' },
+    { path: '/photo', icon: Camera, label: 'Photo' },
+    { path: '/voice', icon: Mic, label: 'Speak' },
     { path: '/scan', icon: ScanLine, label: 'Barcode' },
-    { path: '/add', icon: Search, label: 'Suchen' },
+    { path: '/add', icon: Search, label: 'Search' },
   ]
   return (
     <div className="mt-4 grid grid-cols-4 gap-2">
@@ -198,8 +201,8 @@ function QuickActions({ onPick }: { onPick: (path: string) => void }) {
           onClick={() => onPick(a.path)}
           className="flex flex-col items-center gap-1.5 rounded-tile border border-line bg-surface py-3 transition-colors active:bg-surface-2"
         >
-          <a.icon size={19} className="text-brand-text" />
-          <span className="text-[0.6875rem] font-medium text-txt-2">{a.label}</span>
+          <a.icon size={17} strokeWidth={2.25} className="text-brand-text" />
+          <span className="label-micro text-[0.5625rem] text-txt-2">{a.label}</span>
         </button>
       ))}
     </div>
@@ -211,8 +214,8 @@ function MealGroup({ meal, items }: { meal: MealSlot; items: LogEntry[] }) {
   return (
     <Card>
       <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
-        <span className="text-[0.8125rem] font-medium text-txt-2">{MEAL_LABELS[meal]}</span>
-        <span className="text-[0.8125rem] tabular-nums text-txt-3">{fmtKcal(total)} kcal</span>
+        <span className="label-micro text-txt-2">{MEAL_LABELS[meal]}</span>
+        <span className="numeric text-[0.8125rem] font-bold text-txt-3">{fmtKcal(total)} kcal</span>
       </div>
       <ul>
         {items.map((e) => (
@@ -232,22 +235,24 @@ function EntryRow({ entry }: { entry: LogEntry }) {
     <li className="flex items-start gap-3 border-b border-line/60 px-4 py-3 last:border-b-0">
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 flex-1 text-[0.9375rem] leading-snug">
+          <p className="min-w-0 flex-1 text-[0.9375rem] font-bold leading-snug tracking-[-0.015em]">
             {entry.name}
-            {entry.brand && <span className="text-txt-3"> · {entry.brand}</span>}
+            {entry.brand && <span className="font-medium text-txt-3"> · {entry.brand}</span>}
           </p>
-          <span className="shrink-0 text-[0.9375rem] font-medium tabular-nums">
+          <span className="numeric shrink-0 text-[0.9375rem] font-extrabold">
             {fmtKcal(entry.nutrients.kcal)}
           </span>
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[0.6875rem] text-txt-3">
+          <span className="numeric text-[0.6875rem] font-semibold text-txt-3">
             {num(Math.round(entry.resolvedAmount))} {entry.basis}
           </span>
           {/* An estimate is shown as a range; a weighed entry is not. */}
           {prov.pct >= 0.15 && (
-            <span className="text-[0.6875rem] text-txt-3">± {Math.round(band)} kcal</span>
+            <span className="numeric text-[0.6875rem] font-medium text-txt-4">
+              ± {Math.round(band)} kcal
+            </span>
           )}
           <Badge tone={entry.confidence === 'high' ? 'neutral' : 'warn'}>{prov.label}</Badge>
         </div>
@@ -263,18 +268,18 @@ function EntryRow({ entry }: { entry: LogEntry }) {
             className="rounded-lg bg-bad/15 px-2 py-1 text-[0.6875rem] font-medium text-bad"
             onClick={() => void deleteEntry(entry.id)}
           >
-            Löschen
+            Delete
           </button>
           <button
             className="px-2 py-1 text-[0.6875rem] text-txt-3"
             onClick={() => setConfirming(false)}
           >
-            Abbrechen
+            Cancel
           </button>
         </div>
       ) : (
         <IconButton
-          label={`${entry.name} löschen`}
+          label={`Delete ${entry.name}`}
           className="-mr-2 size-8"
           onClick={() => setConfirming(true)}
         >
@@ -311,10 +316,10 @@ function WeightSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={`Gewicht · ${humanDate(date)}`}>
+    <Sheet open={open} onClose={onClose} title={`Weight · ${humanDate(date)}`}>
       <div className="space-y-4 pb-2">
         <div>
-          <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Gewicht (kg)</label>
+          <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Weight (kg)</label>
           <Input
             type="text"
             inputMode="decimal"
@@ -327,7 +332,7 @@ function WeightSheet({
         </div>
         <div>
           <label className="mb-1.5 block text-[0.8125rem] text-txt-2">
-            Körperfett % <span className="text-txt-3">(optional)</span>
+            Body fat % <span className="text-txt-3">(optional)</span>
           </label>
           <Input
             type="text"
@@ -338,12 +343,12 @@ function WeightSheet({
           />
         </div>
         <p className="text-xs leading-relaxed text-txt-3">
-          Wiege dich möglichst immer zur gleichen Zeit — morgens, nüchtern, nach der Toilette.
-          Einzelne Tage schwanken um 1–2 kg durch Wasser; die App rechnet deshalb mit dem
-          geglätteten Trend, nicht mit dem Tageswert.
+          Weigh yourself at the same time each day — morning, before eating, after the
+          bathroom. Single days swing 1–2 kg on water alone, which is why targets follow the
+          smoothed trend rather than today's reading.
         </p>
         <Button variant="primary" className="w-full" onClick={() => void submit()}>
-          Speichern
+          Save
         </Button>
       </div>
     </Sheet>

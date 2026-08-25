@@ -160,14 +160,14 @@ export type Provenance = 'weighed' | 'barcode' | 'menu' | 'photo' | 'voice' | 'm
 
 export const PROVENANCE_ERROR: Record<Provenance, { pct: number; label: string }> = {
   // Weighed against a composition table: the table's own analytical error.
-  weighed: { pct: 0.05, label: 'gewogen' },
+  weighed: { pct: 0.05, label: 'weighed' },
   // EU tolerance permits ±20% on macros in the 10–40 g/100 g band, and label
   // energy is calculated rather than measured. "Barcode = truth" is a myth.
-  barcode: { pct: 0.15, label: 'Barcode' },
-  menu: { pct: 0.21, label: 'Menü' },
-  photo: { pct: 0.25, label: 'Foto' },
-  voice: { pct: 0.2, label: 'Diktat' },
-  manual: { pct: 0.2, label: 'manuell' },
+  barcode: { pct: 0.15, label: 'barcode' },
+  menu: { pct: 0.21, label: 'menu' },
+  photo: { pct: 0.25, label: 'photo' },
+  voice: { pct: 0.2, label: 'spoken' },
+  manual: { pct: 0.2, label: 'manual' },
 }
 
 export interface AiEstimateMeta {
@@ -346,7 +346,7 @@ export interface Profile {
   proteinPerKg: number
   fatPerKg: number
   units: 'metric' | 'imperial'
-  locale: 'de' | 'en'
+  locale: 'en' | 'de'
   createdAt: number
   updatedAt: number
 }

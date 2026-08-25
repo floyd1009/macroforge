@@ -33,19 +33,19 @@ export interface AnalyseOptions {
 export async function analysePhoto(file: Blob, opts: AnalyseOptions = {}): Promise<PhotoAnalysis> {
   const settings = opts.settings ?? (await getSettings()).ai
   if (!settings.enabled || (!settings.apiKey && !settings.proxyUrl)) {
-    throw new AiError('Foto-Erkennung braucht einen API-Key (Einstellungen → KI)', 'no-key')
+    throw new AiError('Photo logging needs an API key (Settings → AI)', 'no-key')
   }
 
-  opts.onProgress?.('Foto wird geprüft')
+  opts.onProgress?.('Checking the photo')
   const quality = await assessQuality(file)
-  if (!quality.ok) throw new AiError(quality.reason ?? 'Foto unbrauchbar', 'bad-response')
+  if (!quality.ok) throw new AiError(quality.reason ?? 'Photo unusable', 'bad-response')
 
-  opts.onProgress?.('Foto wird vorbereitet')
+  opts.onProgress?.('Preparing the photo')
   const image = await prepareImage(file)
 
   const text = opts.hint
-    ? `Analysiere dieses Essensfoto. Zusätzliche Angaben des Nutzers: ${opts.hint}`
-    : 'Analysiere dieses Essensfoto.'
+    ? `Analyse this meal photo. Extra information from the user: ${opts.hint}`
+    : 'Analyse this meal photo.'
 
   const call = () =>
     callStructured<PhotoResult>({
@@ -64,7 +64,7 @@ export async function analysePhoto(file: Blob, opts: AnalyseOptions = {}): Promi
       temperature: opts.selfConsistency ? 1 : 0,
     })
 
-  opts.onProgress?.('KI schaut sich das Essen an')
+  opts.onProgress?.('Looking at your food')
   let result: PhotoResult
   if (opts.selfConsistency) {
     const samples = await Promise.all([call(), call(), call()])
@@ -73,7 +73,7 @@ export async function analysePhoto(file: Blob, opts: AnalyseOptions = {}): Promi
     result = await call()
   }
 
-  opts.onProgress?.('Nährwerte werden zugeordnet')
+  opts.onProgress?.('Matching nutrition data')
   const items = await resolveItems(result.items ?? [])
 
   return { result, items, imageBlob: file, model: settings.model ?? MODEL_VISION }

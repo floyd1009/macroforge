@@ -39,7 +39,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[0.9375rem] font-medium',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[0.9375rem] font-bold tracking-tight',
         'transition-colors duration-150 disabled:opacity-50',
         styles[variant],
         className,
@@ -103,7 +103,7 @@ export function Sheet({
       <button
         className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
         onClick={onClose}
-        aria-label="Schließen"
+        aria-label="Close"
       />
       <div
         ref={ref}
@@ -140,7 +140,7 @@ export function Field({
 }) {
   return (
     <label className={clsx('block', className)}>
-      <span className="mb-1.5 block text-[0.8125rem] font-medium text-txt-2">{label}</span>
+      <span className="mb-1.5 block text-[0.8125rem] font-semibold tracking-tight text-txt-2">{label}</span>
       {children}
       {hint && <span className="mt-1.5 block text-xs leading-snug text-txt-3">{hint}</span>}
     </label>
@@ -151,8 +151,8 @@ export function Input({ className, ...rest }: React.InputHTMLAttributes<HTMLInpu
   return (
     <input
       className={clsx(
-        'w-full rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-txt',
-        'placeholder:text-txt-4 outline-none transition-colors',
+        'w-full rounded-lg border border-line bg-surface-2 px-3.5 py-2.5 font-semibold text-txt',
+        'placeholder:font-medium placeholder:text-txt-4 outline-none transition-colors',
         'focus:border-brand focus:ring-1 focus:ring-brand/40',
         className,
       )}
@@ -200,7 +200,7 @@ export function Segmented<T extends string>({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={clsx(
-            'min-h-9 flex-1 rounded-lg px-2 text-[0.8125rem] font-medium transition-colors',
+            'min-h-9 flex-1 rounded-md px-2 text-[0.8125rem] font-bold tracking-tight transition-colors',
             value === o.value ? 'bg-brand text-white' : 'text-txt-2 active:bg-surface-3',
           )}
         >
@@ -231,7 +231,7 @@ export function Badge({
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[0.6875rem] font-medium leading-tight',
+        'inline-flex items-center gap-1 rounded border px-1.5 py-[0.1875rem] text-[0.625rem] font-bold uppercase tracking-[0.05em] leading-tight',
         tones[tone],
         className,
       )}
@@ -255,7 +255,7 @@ export function EmptyState({
   return (
     <div className="grid place-items-center px-6 py-12 text-center">
       {icon && <div className="mb-3 text-txt-4">{icon}</div>}
-      <p className="text-[0.9375rem] font-medium text-txt-2">{title}</p>
+      <p className="text-[0.9375rem] font-bold tracking-tight text-txt-2">{title}</p>
       {body && <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-txt-3">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -282,8 +282,12 @@ export function Screen({
         <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3">
           {left}
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[1.0625rem] font-semibold leading-tight">{title}</h1>
-            {subtitle && <p className="truncate text-xs text-txt-3">{subtitle}</p>}
+            <h1 className="truncate text-[1.125rem] font-extrabold leading-tight tracking-[-0.02em]">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="mt-0.5 truncate text-[0.6875rem] font-semibold text-txt-3">{subtitle}</p>
+            )}
           </div>
           {right}
         </div>
@@ -317,9 +321,7 @@ export function IconButton({
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-2.5 mt-6 flex items-center justify-between gap-2">
-      <h2 className="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-txt-3">
-        {children}
-      </h2>
+      <h2 className="label-micro text-txt-3">{children}</h2>
       {action}
     </div>
   )

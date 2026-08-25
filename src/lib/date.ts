@@ -50,13 +50,13 @@ export function isFuture(key: DateKey): boolean {
   return daysBetween(todayKey(), key) > 0
 }
 
-const DAY_LABELS: Record<'de' | 'en', string[]> = {
+const DAY_LABELS: Record<'en' | 'de', string[]> = {
   de: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
   en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
 }
 
-/** "Heute" / "Gestern" / weekday+date, whichever a human would say. */
-export function humanDate(key: DateKey, locale: 'de' | 'en' = 'de'): string {
+/** "Today" / "Yesterday" / weekday or date, whichever a human would say. */
+export function humanDate(key: DateKey, locale: 'en' | 'de' = 'en'): string {
   const delta = daysBetween(todayKey(), key)
   if (delta === 0) return locale === 'de' ? 'Heute' : 'Today'
   if (delta === -1) return locale === 'de' ? 'Gestern' : 'Yesterday'
@@ -69,7 +69,7 @@ export function humanDate(key: DateKey, locale: 'de' | 'en' = 'de'): string {
   })
 }
 
-export function shortWeekday(key: DateKey, locale: 'de' | 'en' = 'de'): string {
+export function shortWeekday(key: DateKey, locale: 'en' | 'de' = 'en'): string {
   return fromKey(key).toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-GB', {
     weekday: 'short',
   })

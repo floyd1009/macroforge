@@ -3,11 +3,11 @@ import { BarChart3, Dumbbell, Home, Plus, Settings as Cog } from 'lucide-react'
 import clsx from 'clsx'
 
 const tabs = [
-  { to: '/', icon: Home, label: 'Heute', end: true },
-  { to: '/trends', icon: BarChart3, label: 'Verlauf' },
-  { to: null, icon: Plus, label: 'Hinzufügen' },
-  { to: '/train', icon: Dumbbell, label: 'Training' },
-  { to: '/settings', icon: Cog, label: 'Mehr' },
+  { to: '/', icon: Home, label: 'Today', end: true },
+  { to: '/trends', icon: BarChart3, label: 'Trends' },
+  { to: null, icon: Plus, label: 'Add' },
+  { to: '/train', icon: Dumbbell, label: 'Train' },
+  { to: '/settings', icon: Cog, label: 'More' },
 ] as const
 
 export function TabBar() {
@@ -29,9 +29,9 @@ export function TabBar() {
             <li key="add" className="flex flex-1 items-center justify-center">
               <button
                 onClick={() => navigate('/add')}
-                aria-label="Essen hinzufügen"
+                aria-label="Add food"
                 className={clsx(
-                  'grid size-13 place-items-center rounded-2xl bg-brand text-white',
+                  'grid size-13 place-items-center rounded-xl bg-brand text-white',
                   'shadow-[0_6px_20px_-6px_var(--color-brand)] transition-transform active:scale-92',
                 )}
               >
@@ -53,7 +53,9 @@ export function TabBar() {
                 {({ isActive }) => (
                   <>
                     <t.icon size={21} strokeWidth={isActive ? 2.4 : 2} />
-                    <span className="text-[0.625rem] font-medium tracking-tight">{t.label}</span>
+                    <span className="text-[0.625rem] font-bold uppercase tracking-[0.04em]">
+                      {t.label}
+                    </span>
                   </>
                 )}
               </NavLink>

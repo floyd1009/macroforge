@@ -151,7 +151,7 @@ export function checkEnergy(n: Nutrients): EnergyCheck {
       derived,
       deviation: 0,
       status: stated > 0 ? 'suspect' : 'ok',
-      message: stated > 0 ? 'Kalorien ohne Makros angegeben' : undefined,
+      message: stated > 0 ? 'calories stated with no macros' : undefined,
     }
   }
   const deviation = (stated - derived) / derived
@@ -159,13 +159,13 @@ export function checkEnergy(n: Nutrients): EnergyCheck {
   // Rounding on a 100 g panel is worth a few percent; 10%+ is a data problem.
   if (abs <= 0.05) return { stated, derived, deviation, status: 'ok' }
   if (abs <= 0.12)
-    return { stated, derived, deviation, status: 'minor', message: 'Kleine Abweichung zur Nährwerttabelle' }
+    return { stated, derived, deviation, status: 'minor', message: 'small deviation from the stated panel' }
   return {
     stated,
     derived,
     deviation,
     status: 'suspect',
-    message: `Angegebene kcal weichen ${Math.round(abs * 100)} % von den Makros ab`,
+    message: `stated kcal is ${Math.round(abs * 100)}% away from the macros`,
   }
 }
 
@@ -345,15 +345,15 @@ export function adaptiveExpenditure(args: {
     note,
   })
 
-  if (trend.length < 2) return fallback('Zu wenige Wiegungen — Schätzung aus Formel')
+  if (trend.length < 2) return fallback('Too few weigh-ins — estimated from formula')
 
   const lastDate = trend[trend.length - 1].date
   const recentIntake = intake.filter((i) => daysBetween(i.date, lastDate) <= windowDays && i.kcal > 0)
   if (recentIntake.length < 5)
-    return fallback('Zu wenige protokollierte Tage — Schätzung aus Formel', recentIntake.length)
+    return fallback('Too few logged days — estimated from formula', recentIntake.length)
 
   const slopeFit = weightSlopeKgPerDay(trend, windowDays)
-  if (!slopeFit) return fallback('Gewichtstrend noch nicht bestimmbar', recentIntake.length)
+  if (!slopeFit) return fallback('Weight trend not yet measurable', recentIntake.length)
 
   const meanIntake = recentIntake.reduce((s, i) => s + i.kcal, 0) / recentIntake.length
   const measured = meanIntake - slopeFit.slope * KCAL_PER_KG
@@ -380,8 +380,8 @@ export function adaptiveExpenditure(args: {
     slopeKgPerWeek: slopeFit.slope * 7,
     note:
       confidence === 'high'
-        ? 'Aus deinem tatsächlichen Verbrauch berechnet'
-        : `Teilweise gemessen (${Math.round(dataWeight * 100)} %), Rest aus Formel`,
+        ? 'Measured from your own energy balance'
+        : `${Math.round(dataWeight * 100)}% measured, the rest from a formula`,
   }
 }
 

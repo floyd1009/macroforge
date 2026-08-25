@@ -1,10 +1,18 @@
+import { parseNumber } from '../lib/format'
+
 /**
- * German household measures (Haushaltsmaße).
+ * Household measures, German and English.
  *
- * No open dataset for this exists — the national nutrition surveys used
- * interviewer-administered photo portion books, which are study instruments,
- * not lookup tables. So this is hand-curated, and it is the piece without
- * which "zwei Scheiben Brot mit Butter" cannot become grams.
+ * No open dataset for the German side exists — the national nutrition surveys
+ * used interviewer-administered photo portion books, which are study
+ * instruments, not lookup tables. So this is hand-curated, and it is the piece
+ * without which "two slices of bread with butter" cannot become grams.
+ *
+ * Both languages are carried deliberately: the interface is English, but the
+ * food is bought in German shops, so a user will say "a slice of Vollkornbrot"
+ * or "zwei Scheiben Brot" interchangeably. Aliases and food keywords cover
+ * both, and masses follow German retail conventions because that is what is
+ * actually in the fridge.
  *
  * Two levels of resolution:
  *   1. A food-specific mass, where the measure means something concrete for
@@ -33,32 +41,39 @@ export interface MeasureDef {
 export const MEASURES: MeasureDef[] = [
   {
     key: 'scheibe',
-    aliases: ['scheibe', 'scheiben', 'schnitte', 'schnitten'],
+    aliases: ['scheibe', 'scheiben', 'schnitte', 'schnitten', 'slice', 'slices'],
     generic: 40,
     unit: 'g',
     spread: 0.3,
     perFood: {
       toastbrot: 28,
       toast: 28,
+      'white bread': 28,
       vollkornbrot: 45,
       mischbrot: 45,
       roggenbrot: 45,
       graubrot: 45,
       brot: 45,
+      bread: 45,
       knäckebrot: 10,
+      crispbread: 10,
       pumpernickel: 30,
       käse: 30,
+      cheese: 30,
       gouda: 30,
       emmentaler: 30,
       schmelzkäse: 20,
       salami: 10,
       wurst: 15,
       schinken: 25,
+      ham: 25,
       kochschinken: 25,
       putenbrust: 20,
       leberwurst: 20,
       gurke: 8,
+      cucumber: 8,
       tomate: 15,
+      tomato: 15,
       zwiebel: 10,
       ananas: 80,
       zitrone: 8,
@@ -66,30 +81,41 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'el',
-    aliases: ['el', 'esslöffel', 'esslöffeln', 'essloeffel', 'tablespoon', 'tbsp'],
+    aliases: ['el', 'esslöffel', 'esslöffeln', 'essloeffel', 'tablespoon', 'tablespoons', 'tbsp'],
     generic: 15,
     unit: 'g',
     spread: 0.25,
     perFood: {
       öl: 12,
+      oil: 12,
       olivenöl: 12,
+      'olive oil': 12,
       rapsöl: 12,
       butter: 15,
       margarine: 15,
       zucker: 15,
+      sugar: 15,
       mehl: 10,
+      flour: 10,
       stärke: 10,
       honig: 20,
+      honey: 20,
       marmelade: 20,
+      jam: 20,
       senf: 15,
       ketchup: 15,
       mayonnaise: 15,
       quark: 30,
       joghurt: 20,
+      yoghurt: 20,
+      yogurt: 20,
       sahne: 15,
+      cream: 15,
       frischkäse: 20,
       erdnussbutter: 16,
+      'peanut butter': 16,
       haferflocken: 12,
+      oats: 12,
       reis: 15,
       salz: 18,
       proteinpulver: 12,
@@ -98,68 +124,71 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'tl',
-    aliases: ['tl', 'teelöffel', 'teeloeffel', 'teaspoon', 'tsp'],
+    aliases: ['tl', 'teelöffel', 'teeloeffel', 'teaspoon', 'teaspoons', 'tsp'],
     generic: 5,
     unit: 'g',
     spread: 0.25,
-    perFood: { öl: 4, butter: 5, zucker: 4, honig: 7, salz: 6, mehl: 3, senf: 5, kaffee: 2, backpulver: 3 },
+    perFood: { öl: 4, oil: 4, butter: 5, zucker: 4, sugar: 4, honig: 7, honey: 7, salz: 6, salt: 6, mehl: 3, flour: 3, senf: 5, kaffee: 2, coffee: 2 },
   },
   {
     key: 'becher',
-    aliases: ['becher', 'bechern'],
+    aliases: ['becher', 'bechern', 'pot', 'pots', 'tub', 'tubs', 'container'],
     generic: 200,
     unit: 'g',
     spread: 0.25,
-    perFood: { joghurt: 150, skyr: 150, quark: 250, magerquark: 250, sahne: 200, schmand: 200, hüttenkäse: 200, pudding: 125 },
+    perFood: { joghurt: 150, yoghurt: 150, yogurt: 150, skyr: 150, quark: 250, magerquark: 250, 'cottage cheese': 200, hüttenkäse: 200, sahne: 200, pudding: 125 },
   },
   {
     key: 'tasse',
-    aliases: ['tasse', 'tassen'],
+    aliases: ['tasse', 'tassen', 'cup', 'cups', 'mug'],
     generic: 200,
     unit: 'ml',
     spread: 0.2,
-    perFood: { kaffee: 200, tee: 200, mehl: 120, reis: 180, zucker: 200, haferflocken: 90, milch: 200 },
+    perFood: { kaffee: 200, coffee: 200, tee: 200, tea: 200, mehl: 120, flour: 120, reis: 180, rice: 180, zucker: 200, sugar: 200, haferflocken: 90, oats: 90, milch: 200, milk: 200 },
   },
   {
     key: 'glas',
-    aliases: ['glas', 'gläser', 'glaeser'],
+    aliases: ['glas', 'gläser', 'glaeser', 'glass', 'glasses'],
     generic: 200,
     unit: 'ml',
     spread: 0.25,
-    perFood: { bier: 330, wein: 200, sekt: 100, saft: 200, wasser: 250, milch: 200, schnaps: 20 },
+    perFood: { bier: 330, beer: 330, wein: 200, wine: 200, sekt: 100, saft: 200, juice: 200, wasser: 250, water: 250, milch: 200, milk: 200 },
   },
   {
     key: 'handvoll',
-    aliases: ['handvoll', 'hand voll', 'händevoll'],
+    aliases: ['handvoll', 'hand voll', 'händevoll', 'handful', 'handfuls'],
     generic: 30,
     unit: 'g',
     spread: 0.4,
-    perFood: { nüsse: 25, mandeln: 25, walnüsse: 25, cashews: 25, chips: 25, gummibärchen: 30, beeren: 80, heidelbeeren: 80, rosinen: 30, müsli: 40, salat: 20 },
+    perFood: { nüsse: 25, nuts: 25, mandeln: 25, almonds: 25, walnüsse: 25, walnuts: 25, cashews: 25, chips: 25, crisps: 25, beeren: 80, berries: 80, heidelbeeren: 80, blueberries: 80, rosinen: 30, raisins: 30, müsli: 40, muesli: 40, granola: 45, salat: 20 },
   },
   {
     key: 'stück',
-    aliases: ['stück', 'stücke', 'stk', 'stueck'],
+    aliases: ['stück', 'stücke', 'stk', 'stueck', 'piece', 'pieces', 'item', 'whole'],
     generic: 100,
     unit: 'g',
     spread: 0.4,
     perFood: {
-      ei: 58, brötchen: 55, semmel: 55, schrippe: 55, croissant: 60, banane: 118,
-      apfel: 180, orange: 150, birne: 175, kiwi: 75, tomate: 120, paprika: 150,
-      karotte: 70, kartoffel: 150, zwiebel: 110, knoblauchzehe: 3,
-      pizza: 350, döner: 400, currywurst: 150, bratwurst: 100, frikadelle: 80,
-      keks: 12, praline: 12, würfelzucker: 3, riegel: 25, schokoriegel: 50,
+      ei: 58, egg: 58, brötchen: 55, semmel: 55, schrippe: 55, roll: 55,
+      croissant: 60, banane: 118, banana: 118, apfel: 180, apple: 180,
+      orange: 150, birne: 175, pear: 175, kiwi: 75, tomate: 120, tomato: 120,
+      paprika: 150, pepper: 150, karotte: 70, carrot: 70, kartoffel: 150,
+      potato: 150, zwiebel: 110, onion: 110, knoblauchzehe: 3,
+      pizza: 350, döner: 400, kebab: 400, currywurst: 150, bratwurst: 100,
+      sausage: 100, frikadelle: 80, meatball: 80, keks: 12, biscuit: 12,
+      cookie: 14, würfelzucker: 3, riegel: 25, schokoriegel: 50,
     },
   },
   {
     key: 'prise',
-    aliases: ['prise', 'prisen'],
+    aliases: ['prise', 'prisen', 'pinch', 'pinches'],
     generic: 0.4,
     unit: 'g',
     spread: 0.5,
   },
   {
     key: 'schuss',
-    aliases: ['schuss', 'spritzer'],
+    aliases: ['schuss', 'spritzer', 'splash', 'dash', 'drizzle'],
     generic: 15,
     unit: 'ml',
     spread: 0.5,
@@ -167,22 +196,22 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'portion',
-    aliases: ['portion', 'portionen'],
+    aliases: ['portion', 'portionen', 'serving', 'servings', 'helping'],
     generic: 150,
     unit: 'g',
     spread: 0.4,
-    perFood: { nudeln: 85, pasta: 85, reis: 75, müsli: 50, haferflocken: 50, fleisch: 150, fisch: 140, gemüse: 200, salat: 100, pommes: 150 },
+    perFood: { nudeln: 85, pasta: 85, reis: 75, rice: 75, müsli: 50, muesli: 50, haferflocken: 50, oats: 50, fleisch: 150, meat: 150, chicken: 150, fisch: 140, fish: 140, gemüse: 200, vegetables: 200, salat: 100, salad: 100, pommes: 150, fries: 150 },
   },
   {
     key: 'kelle',
-    aliases: ['kelle', 'schöpfkelle', 'suppenkelle'],
+    aliases: ['kelle', 'schöpfkelle', 'suppenkelle', 'ladle', 'ladles'],
     generic: 150,
     unit: 'ml',
     spread: 0.3,
   },
   {
     key: 'kugel',
-    aliases: ['kugel', 'kugeln'],
+    aliases: ['kugel', 'kugeln', 'scoop', 'scoops', 'ball'],
     generic: 50,
     unit: 'g',
     spread: 0.3,
@@ -190,14 +219,14 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'zehe',
-    aliases: ['zehe', 'zehen'],
+    aliases: ['zehe', 'zehen', 'clove', 'cloves'],
     generic: 3,
     unit: 'g',
     spread: 0.4,
   },
   {
     key: 'blatt',
-    aliases: ['blatt', 'blätter'],
+    aliases: ['blatt', 'blätter', 'leaf', 'leaves'],
     generic: 10,
     unit: 'g',
     spread: 0.4,
@@ -205,7 +234,7 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'bund',
-    aliases: ['bund'],
+    aliases: ['bund', 'bunch', 'bunches'],
     generic: 40,
     unit: 'g',
     spread: 0.4,
@@ -213,7 +242,7 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'stange',
-    aliases: ['stange', 'stangen'],
+    aliases: ['stange', 'stangen', 'stalk', 'stalks', 'stick'],
     generic: 100,
     unit: 'g',
     spread: 0.4,
@@ -221,7 +250,7 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'dose',
-    aliases: ['dose', 'dosen'],
+    aliases: ['dose', 'dosen', 'can', 'cans', 'tin', 'tins'],
     generic: 400,
     unit: 'g',
     spread: 0.2,
@@ -229,7 +258,7 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'packung',
-    aliases: ['packung', 'packungen', 'päckchen', 'paeckchen'],
+    aliases: ['packung', 'packungen', 'päckchen', 'paeckchen', 'pack', 'packs', 'packet', 'package'],
     generic: 250,
     unit: 'g',
     spread: 0.4,
@@ -237,7 +266,7 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'flasche',
-    aliases: ['flasche', 'flaschen'],
+    aliases: ['flasche', 'flaschen', 'bottle', 'bottles'],
     generic: 500,
     unit: 'ml',
     spread: 0.3,
@@ -245,7 +274,7 @@ export const MEASURES: MeasureDef[] = [
   },
   {
     key: 'riegel',
-    aliases: ['riegel'],
+    aliases: ['riegel', 'bar', 'bars'],
     generic: 40,
     unit: 'g',
     spread: 0.3,
@@ -253,8 +282,12 @@ export const MEASURES: MeasureDef[] = [
   },
 ]
 
-/** Lexical fractions and numerals, as they are actually spoken. */
+/** Lexical fractions and numerals, German and English, as actually spoken. */
 export const SPOKEN_QUANTITIES: Record<string, number> = {
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  half: 0.5, quarter: 0.25, third: 1 / 3, 'three quarters': 0.75,
+  'one and a half': 1.5, couple: 2, few: 3,
   ein: 1, eine: 1, einen: 1, einem: 1, eins: 1,
   zwei: 2, drei: 3, vier: 4, fünf: 5, fuenf: 5, sechs: 6, sieben: 7,
   acht: 8, neun: 9, zehn: 10, elf: 11, zwölf: 12, zwoelf: 12,
@@ -321,15 +354,14 @@ export function resolveMeasure(
   }
 }
 
-/** Parse a spoken or typed German quantity: "1,5", "anderthalb", "ein halbes". */
+/** Parse a spoken or typed quantity: "1,5", "1.5", "anderthalb", "one and a half". */
 export function parseQuantity(raw: string): number | null {
   const s = raw.trim().toLowerCase()
   if (!s) return null
 
-  // German decimal comma. "1,5" is 1.5 — never 15, which parseFloat would give
-  // after a naive comma strip.
-  const numeric = s.replace(/\s/g, '').replace(',', '.')
-  if (/^\d+(\.\d+)?$/.test(numeric)) return Number(numeric)
+  // "1,5" from a German keyboard and "1.5" from an English one must both work.
+  const parsed = parseNumber(s)
+  if (parsed != null) return parsed
 
   // "1/2", "3/4"
   const frac = s.match(/^(\d+)\s*\/\s*(\d+)$/)

@@ -62,32 +62,32 @@ export function CalorieHeader({
   consumed,
   target,
   uncertainty = 0,
-  locale = 'de',
+  locale = 'en',
 }: {
   consumed: number
   target: number
   /** Absolute ± kcal across everything logged today. */
   uncertainty?: number
-  locale?: 'de' | 'en'
+  locale?: 'en' | 'de'
 }) {
   const left = target - consumed
   return (
     <div>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-[2.75rem] font-bold leading-none tracking-tight text-kcal">
+          <div className="text-display numeric text-[3.25rem] leading-[0.92] text-kcal">
             {fmtKcal(consumed, locale)}
           </div>
-          <div className="mt-1.5 text-[0.8125rem] text-txt-2">
-            kcal · von {fmtKcal(target, locale)}
+          <div className="mt-2 text-[0.8125rem] font-semibold text-txt-2">
+            kcal of {fmtKcal(target, locale)}
           </div>
         </div>
         <div className="pb-0.5 text-right">
-          <div className="text-lg font-semibold leading-none text-txt">
+          <div className="numeric text-xl font-extrabold leading-none text-txt">
             {fmtKcal(Math.abs(left), locale)}
           </div>
-          <div className="mt-1 text-[0.6875rem] text-txt-3">
-            {left >= 0 ? 'übrig' : 'darüber'}
+          <div className="label-micro mt-1.5 text-txt-3">
+            {left >= 0 ? 'left' : 'over'}
           </div>
         </div>
       </div>
@@ -98,7 +98,7 @@ export function CalorieHeader({
         // Showing the band is the honest alternative to false precision: a day
         // built from photo estimates is simply not known to the kcal.
         <div className="mt-2 text-[0.6875rem] text-txt-3">
-          ± {num(Math.round(uncertainty), 0, locale)} kcal Unsicherheit aus deinen Schätzungen
+          ± {num(Math.round(uncertainty), 0, locale)} kcal of uncertainty from your estimates
         </div>
       )}
     </div>
@@ -106,21 +106,21 @@ export function CalorieHeader({
 }
 
 const MACROS = [
-  { key: 'protein', label: 'Eiweiß', short: 'EW', color: 'var(--color-protein)' },
-  { key: 'carbs', label: 'Kohlenhydrate', short: 'KH', color: 'var(--color-carb)' },
-  { key: 'fat', label: 'Fett', short: 'F', color: 'var(--color-fat)' },
+  { key: 'protein', label: 'Protein', short: 'P', color: 'var(--color-protein)' },
+  { key: 'carbs', label: 'Carbs', short: 'C', color: 'var(--color-carb)' },
+  { key: 'fat', label: 'Fat', short: 'F', color: 'var(--color-fat)' },
 ] as const
 
 export function MacroRows({
   consumed,
   targets,
   showFiber = false,
-  locale = 'de',
+  locale = 'en',
 }: {
   consumed: Nutrients
   targets: MacroTargets
   showFiber?: boolean
-  locale?: 'de' | 'en'
+  locale?: 'en' | 'de'
 }) {
   const rows: Array<{ label: string; value: number; target: number; color: string }> = MACROS.map((m) => ({
     label: m.label,
@@ -133,7 +133,7 @@ export function MacroRows({
   // bar every day would be noise. Only show it when there is something to show.
   if (showFiber && targets.fiber) {
     rows.push({
-      label: 'Ballaststoffe',
+      label: 'Fibre',
       value: consumed.fiber ?? 0,
       target: targets.fiber,
       color: 'var(--color-fiber)',
@@ -145,12 +145,13 @@ export function MacroRows({
       {rows.map((r) => (
         <div key={r.label}>
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
-            {/* German macro names are long; keep them on one line and let the
-                numbers hold the right edge. */}
-            <span className="truncate text-[0.8125rem] text-txt-2">{r.label}</span>
-            <span className="shrink-0 text-[0.8125rem] tabular-nums text-txt">
+            {/* Keep labels on one line and let the numbers hold the right edge. */}
+            <span className="truncate text-[0.8125rem] font-semibold tracking-tight text-txt-2">
+              {r.label}
+            </span>
+            <span className="numeric shrink-0 text-[0.8125rem] font-bold text-txt">
               {fmtGrams(r.value, locale)}
-              <span className="text-txt-3"> / {fmtGrams(r.target, locale)} g</span>
+              <span className="font-medium text-txt-3"> / {fmtGrams(r.target, locale)} g</span>
             </span>
           </div>
           <ProgressBar value={r.value} target={r.target} color={r.color} />
@@ -161,12 +162,12 @@ export function MacroRows({
 }
 
 /** Compact three-dot macro summary for list rows. */
-export function MacroChips({ n, locale = 'de' }: { n: Nutrients; locale?: 'de' | 'en' }) {
+export function MacroChips({ n, locale = 'en' }: { n: Nutrients; locale?: 'en' | 'de' }) {
   return (
-    <span className="inline-flex items-center gap-2 text-[0.6875rem] tabular-nums text-txt-3">
-      <Chip color="var(--color-protein)" label={`${fmtGrams(n.protein, locale)} EW`} />
-      <Chip color="var(--color-carb)" label={`${fmtGrams(n.carbs, locale)} KH`} />
-      <Chip color="var(--color-fat)" label={`${fmtGrams(n.fat, locale)} F`} />
+    <span className="numeric inline-flex items-center gap-2 text-[0.6875rem] font-semibold text-txt-3">
+      <Chip color="var(--color-protein)" label={`${fmtGrams(n.protein, locale)}P`} />
+      <Chip color="var(--color-carb)" label={`${fmtGrams(n.carbs, locale)}C`} />
+      <Chip color="var(--color-fat)" label={`${fmtGrams(n.fat, locale)}F`} />
     </span>
   )
 }

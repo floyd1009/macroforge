@@ -4,104 +4,115 @@
  * One rule dominates both: **the model never returns calories or macros.**
  * It returns *what it saw* — food names, portions and preparation — and the
  * app resolves those against real composition data. A model that invents
- * "312 kcal" is unauditable and unfixable; a model that says "ca. 150 g
- * Hähnchenbrust, gebraten" can be checked, corrected, and re-resolved against
- * a database entry the user can see.
+ * "312 kcal" is unauditable and unfixable; a model that says "about 150 g of
+ * chicken breast, pan-fried" can be checked, corrected, and re-resolved
+ * against a database entry the user can open.
+ *
+ * The interface is English but the food is bought in Germany, so both prompts
+ * accept German or English input and return an English name plus the German
+ * one where it exists — the German name is often the only thing that matches a
+ * product in the database.
  */
 
-export const PHOTO_SYSTEM = `Du bist ein Ernährungsassistent, der Essensfotos analysiert. Du arbeitest für einen Nutzer in Deutschland.
+export const PHOTO_SYSTEM = `You analyse photographs of meals for someone tracking their macros. They live in Germany, so German products and dishes are common.
 
-DEINE AUFGABE: Beschreibe präzise, WAS auf dem Foto ist und WIE VIEL davon. Du berechnest KEINE Kalorien oder Makronährstoffe — das macht die App anhand einer Nährwertdatenbank.
+YOUR JOB: describe precisely WHAT is in the photo and HOW MUCH of it. You do NOT calculate calories or macronutrients — the app resolves those against a nutrition database.
 
-REGELN:
-1. Zerlege das Gericht in einzelne Zutaten. "Hähnchen mit Reis und Brokkoli" sind DREI Einträge, nicht einer.
-2. Schätze die Portion je Zutat. Nutze bevorzugt ein Haushaltsmaß (Scheibe, EL, TL, Stück, Handvoll, Becher, Portion) oder, wenn das nicht passt, eine Masse in Gramm.
-3. Nenne den Zubereitungszustand: roh, gekocht/gebraten, oder wie gekauft. Das verändert das Gewicht erheblich.
-4. UNSICHTBARE ZUTATEN sind der größte Fehlerquelle. Öl, Butter, Zucker, Sahne und Saucen sind kalorienreich und auf einem Foto oft nicht zu sehen. Wenn du vermutest, dass welche verwendet wurden, führe sie als eigenen Eintrag mit "assumed": true auf und stelle dazu eine kurze Rückfrage.
-5. Sei ehrlich über Unsicherheit. Wenn du eine Portion nicht einschätzen kannst, sage das über eine niedrige confidence — rate nicht selbstbewusst.
-6. Deutsche Lebensmittelnamen. Marken nur, wenn sie klar erkennbar sind.
-7. Wenn auf dem Foto kein Essen ist, gib eine leere Liste zurück und erkläre es in "note".
+RULES:
+1. Break the meal into individual ingredients. "Chicken with rice and broccoli" is THREE entries, not one.
+2. Estimate the portion of each ingredient. Prefer a household measure (slice, tbsp, tsp, piece, handful, pot, portion) or, where that does not fit, a mass in grams.
+3. State the preparation: raw, cooked, or as sold. This changes the weight substantially — cooked meat has lost water, cooked rice and pasta have absorbed it.
+4. INVISIBLE INGREDIENTS ARE THE BIGGEST SOURCE OF ERROR. Oil, butter, sugar, cream and sauces are calorie-dense and usually impossible to see. If you suspect they were used, list them as their own entry with "assumed": true, and ask a short follow-up question about them.
+5. Be honest about uncertainty. If you cannot judge a portion, say so with a low confidence value — do not guess confidently.
+6. Give "name" in English. If the item is a German product or dish, ALSO give "germanName" with the German name exactly as it would appear in a German shop (e.g. "Vollkornbrot", "Magerquark", "Bratwurst") — that is often the only string that will match the database.
+7. Name a brand only if it is clearly legible in the photo.
+8. If there is no food in the photo, return an empty list and explain in "note".
 
-GRÖSSENHINWEISE: Ein Standardteller hat 26–28 cm Durchmesser, eine Gabel 19–20 cm, eine Dose 330 ml ist 11,5 cm hoch. Nutze solche Referenzen, wenn sie im Bild sind, und sage in "anchors", welche du verwendet hast.`
+SIZE REFERENCES: a standard German dinner plate is 26–28 cm across, a fork is 19–20 cm, a 330 ml can is 11.5 cm tall. Use whatever reference objects are visible and say which you used in "anchors".`
 
 export const PHOTO_TOOL = {
   name: 'log_meal',
-  description: 'Trage die auf dem Foto erkannten Lebensmittel mit geschätzten Portionen ein.',
+  description: 'Record the foods identified in the photo with estimated portions.',
   schema: {
     type: 'object',
     properties: {
       items: {
         type: 'array',
-        description: 'Jede erkannte Zutat einzeln.',
+        description: 'Each identified ingredient separately.',
         items: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'Deutscher Lebensmittelname, z. B. "Hähnchenbrustfilet".' },
-            brand: { type: 'string', description: 'Nur wenn die Marke im Bild klar lesbar ist.' },
-            quantity: { type: 'number', description: 'Menge in der Einheit von "measure".' },
+            name: { type: 'string', description: 'English food name, e.g. "chicken breast".' },
+            germanName: {
+              type: 'string',
+              description: 'German name if this is a German product or dish, e.g. "Hähnchenbrustfilet".',
+            },
+            brand: { type: 'string', description: 'Only if the brand is clearly legible.' },
+            quantity: { type: 'number', description: 'Amount, in the unit given by "measure".' },
             measure: {
               type: 'string',
               description:
-                'Haushaltsmaß (Scheibe, EL, TL, Stück, Handvoll, Becher, Glas, Portion, Dose) ODER "g" bzw. "ml".',
+                'A household measure (slice, tbsp, tsp, piece, handful, pot, glass, portion, can) OR "g" / "ml".',
             },
             state: {
               type: 'string',
               enum: ['raw', 'cooked', 'as_sold'],
-              description: 'Zustand beim Wiegen: roh, zubereitet, oder wie gekauft.',
+              description: 'The state this portion is being weighed in.',
             },
             assumed: {
               type: 'boolean',
-              description: 'true, wenn die Zutat nicht sichtbar ist, sondern vermutet wird (Öl, Zucker, Butter).',
+              description: 'true if not visible but inferred (oil, sugar, butter).',
             },
-            confidence: { type: 'number', description: 'Von 0 bis 1, wie sicher du bei dieser Portion bist.' },
+            confidence: { type: 'number', description: '0 to 1, how sure you are of this portion.' },
           },
           required: ['name', 'quantity', 'measure', 'state', 'confidence'],
         },
       },
-      dish: { type: 'string', description: 'Name des Gerichts insgesamt, z. B. "Hähnchenpfanne mit Reis".' },
+      dish: { type: 'string', description: 'Name of the overall dish, e.g. "chicken stir-fry with rice".' },
       anchors: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Bildreferenzen, die du zur Größenschätzung genutzt hast (Teller, Gabel, Hand, Dose).',
+        description: 'Reference objects you used to judge size (plate, fork, hand, can).',
       },
       questions: {
         type: 'array',
         description:
-          'Höchstens 3 kurze Rückfragen zu unsichtbaren Zutaten, die die Schätzung am stärksten verbessern würden.',
+          'At most 3 short questions about invisible ingredients that would most improve the estimate.',
         items: {
           type: 'object',
           properties: {
-            question: { type: 'string', description: 'Die Frage auf Deutsch, kurz.' },
-            affects: { type: 'string', description: 'Auf welchen Eintrag sie sich bezieht.' },
-            options: { type: 'array', items: { type: 'string' }, description: '2–4 Antwortmöglichkeiten.' },
+            question: { type: 'string', description: 'The question, in English, kept short.' },
+            affects: { type: 'string', description: 'Which entry it relates to.' },
+            options: { type: 'array', items: { type: 'string' }, description: '2–4 answer options.' },
           },
           required: ['question', 'options'],
         },
       },
-      overallConfidence: { type: 'number', description: '0 bis 1 für die Gesamtschätzung.' },
-      note: { type: 'string', description: 'Kurzer Hinweis an den Nutzer, falls nötig.' },
+      overallConfidence: { type: 'number', description: '0 to 1 for the estimate as a whole.' },
+      note: { type: 'string', description: 'A short note to the user, if needed.' },
     },
     required: ['items', 'overallConfidence'],
   },
 } as const
 
-export const VOICE_SYSTEM = `Du wandelst gesprochene oder getippte deutsche Beschreibungen von Mahlzeiten in strukturierte Einträge um.
+export const VOICE_SYSTEM = `You turn spoken or typed descriptions of meals into structured entries, for someone in Germany tracking their macros. Input may be English, German, or a mix — German food names are common even in an English sentence.
 
-DEINE AUFGABE: Zerlege den Text in einzelne Lebensmittel mit Menge, Maßeinheit und Zustand. Du berechnest KEINE Kalorien und KEINE Gramm-Werte für Haushaltsmaße — die App löst Haushaltsmaße gegen eine eigene Tabelle auf.
+YOUR JOB: split the text into individual foods with quantity, measure and state. You do NOT calculate calories, and you do NOT convert household measures into grams — the app resolves those against its own table.
 
-REGELN:
-1. Gib bei "measure" das genannte Haushaltsmaß wörtlich zurück (Scheibe, EL, TL, Stück, Becher, Glas, Handvoll, Portion, Dose, Packung) — ODER "g"/"ml", wenn der Nutzer eine Masse genannt hat.
-2. Rechne NIEMALS selbst ein Haushaltsmaß in Gramm um. "zwei Scheiben Brot" ist quantity 2, measure "Scheibe" — nicht 90 g.
-3. Deutsche Dezimalkommas beibehalten: "1,5 Liter" ist quantity 1.5, measure "ml", also 1500 ml. Rechne Liter in ml und Kilogramm in g um.
-4. Sprachliche Brüche auflösen: "ein halbes Hähnchen" = 0.5, "anderthalb Brötchen" = 1.5, "ein Viertel Pizza" = 0.25.
-5. Zusammengesetzte Substantive NICHT trennen: "Hähnchenbrustfilet" ist EIN Lebensmittel, nicht "Hähnchen" + "Brust" + "Filet".
-6. Zubereitung erfassen: "gebratene Hähnchenbrust" ist state "cooked", "Hähnchenbrust roh" ist "raw", ein verpacktes Produkt ist "as_sold".
-7. Wenn keine Menge genannt wird, nimm eine übliche Portion an und setze confidence niedrig.
-8. Mahlzeit erkennen, falls genannt ("zum Frühstück" → breakfast).`
+RULES:
+1. Return "measure" as the household measure the user actually said (slice, tbsp, tsp, piece, pot, glass, handful, portion, can, pack) — or "g" / "ml" if they gave a mass.
+2. NEVER convert a household measure to grams yourself. "Two slices of bread" is quantity 2, measure "slice" — not 90 g.
+3. Handle both decimal conventions: "1,5 litres" and "1.5 litres" are both 1.5. Convert litres to ml and kilograms to g.
+4. Resolve spoken fractions: "half a chicken" = 0.5, "one and a half rolls" = 1.5, "a quarter of a pizza" = 0.25, "anderthalb" = 1.5.
+5. Do NOT split German compound nouns: "Hähnchenbrustfilet" is ONE food, not "Hähnchen" + "Brust" + "Filet".
+6. Capture preparation: "fried chicken breast" is state "cooked", "raw chicken breast" is "raw", a packaged product is "as_sold".
+7. Give "name" in English, and "germanName" as well whenever the item is a German product or dish — that is often the only string that matches the database.
+8. If no amount is given, assume a normal portion and set confidence low.
+9. Set "meal" only if the text says which meal it was.`
 
 export const VOICE_TOOL = {
   name: 'parse_meal_text',
-  description: 'Zerlege den deutschen Text in einzelne Lebensmitteleinträge.',
+  description: 'Split the text into individual food entries.',
   schema: {
     type: 'object',
     properties: {
@@ -110,12 +121,13 @@ export const VOICE_TOOL = {
         items: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'Lebensmittelname auf Deutsch, zusammengesetzte Wörter erhalten.' },
+            name: { type: 'string', description: 'English food name.' },
+            germanName: { type: 'string', description: 'German name, if this is a German product or dish.' },
             brand: { type: 'string' },
             quantity: { type: 'number' },
             measure: {
               type: 'string',
-              description: 'Das genannte Haushaltsmaß wörtlich, oder "g"/"ml" bei einer Masse.',
+              description: 'The household measure the user said, verbatim, or "g" / "ml" for a mass.',
             },
             state: { type: 'string', enum: ['raw', 'cooked', 'as_sold'] },
             confidence: { type: 'number' },
@@ -126,7 +138,7 @@ export const VOICE_TOOL = {
       meal: {
         type: 'string',
         enum: ['breakfast', 'lunch', 'dinner', 'snack'],
-        description: 'Nur setzen, wenn im Text genannt.',
+        description: 'Only set if stated in the text.',
       },
       note: { type: 'string' },
     },
@@ -134,9 +146,11 @@ export const VOICE_TOOL = {
   },
 } as const
 
-/** Shape returned by the photo tool. */
+/** Shape returned by both tools. */
 export interface AiFoodItem {
   name: string
+  /** German name, when the item is a German product — often the better match. */
+  germanName?: string
   brand?: string
   quantity: number
   measure: string

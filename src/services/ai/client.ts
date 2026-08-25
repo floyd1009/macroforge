@@ -73,10 +73,10 @@ export async function callStructured<T>({
   signal,
   temperature,
 }: CallOptions): Promise<T> {
-  if (!settings.enabled) throw new AiError('KI-Funktionen sind ausgeschaltet', 'no-key')
+  if (!settings.enabled) throw new AiError('AI features are switched off', 'no-key')
 
   const usingProxy = settings.provider === 'proxy' && settings.proxyUrl
-  if (!usingProxy && !settings.apiKey) throw new AiError('Kein API-Key hinterlegt', 'no-key')
+  if (!usingProxy && !settings.apiKey) throw new AiError('No API key saved', 'no-key')
 
   const content: unknown[] = images.map((img) => ({
     type: 'image',
@@ -109,16 +109,16 @@ export async function callStructured<T>({
     res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal })
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e
-    throw new AiError('Keine Verbindung zur KI', 'network')
+    throw new AiError('Cannot reach the AI service', 'network')
   }
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
     if (res.status === 401 || res.status === 403)
-      throw new AiError('API-Key ungültig oder ohne Guthaben', 'auth')
-    if (res.status === 429) throw new AiError('Rate-Limit erreicht — kurz warten', 'rate')
-    if (res.status === 529) throw new AiError('KI überlastet — gleich nochmal versuchen', 'overloaded')
-    throw new AiError(`KI-Fehler ${res.status}: ${detail.slice(0, 160)}`, 'network')
+      throw new AiError('API key is invalid or out of credit', 'auth')
+    if (res.status === 429) throw new AiError('Rate limit reached — wait a moment', 'rate')
+    if (res.status === 529) throw new AiError('AI service overloaded — try again shortly', 'overloaded')
+    throw new AiError(`AI error ${res.status}: ${detail.slice(0, 160)}`, 'network')
   }
 
   const json = await res.json()
@@ -127,7 +127,7 @@ export async function callStructured<T>({
     // Almost always a refusal or a max_tokens cut-off mid-tool-call.
     const stop = json.stop_reason
     throw new AiError(
-      stop === 'max_tokens' ? 'Antwort war zu lang — bitte weniger auf einmal' : 'KI hat keine verwertbare Antwort geliefert',
+      stop === 'max_tokens' ? 'Response was too long — try less at once' : 'The AI returned nothing usable',
       stop === 'refusal' ? 'refused' : 'bad-response',
     )
   }
@@ -176,7 +176,7 @@ export async function testKey(settings: AiSettings, signal?: AbortSignal): Promi
     },
     signal,
   })
-  if (res.status === 401 || res.status === 403) throw new AiError('API-Key ungültig', 'auth')
-  if (!res.ok) throw new AiError(`Prüfung fehlgeschlagen (${res.status})`, 'network')
+  if (res.status === 401 || res.status === 403) throw new AiError('API key is invalid', 'auth')
+  if (!res.ok) throw new AiError(`Check failed (${res.status})`, 'network')
   return true
 }

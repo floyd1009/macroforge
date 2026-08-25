@@ -64,15 +64,26 @@ function similarity(a: string, b: string): number {
   return jaccard * 0.7
 }
 
-async function findFood(name: string, brand?: string): Promise<{ food?: Food; quality: ResolvedItem['matchQuality'] }> {
-  const query = brand ? `${brand} ${name}` : name
+async function findFood(
+  name: string,
+  brand?: string,
+  germanName?: string,
+): Promise<{ food?: Food; quality: ResolvedItem['matchQuality'] }> {
+  // Both names are tried against both fields. The interface is English but the
+  // database is full of German products, so "quark" and "Magerquark" each need
+  // to find the same row.
+  const names = [name, germanName].filter(Boolean) as string[]
+  const score = (f: Food) =>
+    Math.max(...names.flatMap((n) => [similarity(n, f.nameDe ?? f.name), similarity(n, f.name)]))
+
+  const query = brand ? `${brand} ${germanName ?? name}` : (germanName ?? name)
 
   // Local first: seeds and anything the user has logged before are both
   // instant and more likely to be the thing they actually eat.
-  const local = await searchLocalFoods(name, 12)
+  const local = (await Promise.all(names.map((n) => searchLocalFoods(n, 12)))).flat()
   let best: { food: Food; score: number } | null = null
   for (const f of local) {
-    const s = Math.max(similarity(name, f.nameDe ?? f.name), similarity(name, f.name))
+    const s = score(f)
     if (!best || s > best.score) best = { food: f, score: s }
   }
   if (best && best.score >= 0.9) return { food: best.food, quality: 'exact' }
@@ -83,8 +94,7 @@ async function findFood(name: string, brand?: string): Promise<{ food?: Food; qu
     try {
       const remote = await searchProducts(query, { pageSize: 12 })
       for (const r of remote) {
-        const s = Math.max(similarity(name, r.food.nameDe ?? r.food.name), similarity(name, r.food.name))
-        const adjusted = s * (0.7 + 0.3 * r.quality)
+        const adjusted = score(r.food) * (0.7 + 0.3 * r.quality)
         if (!best || adjusted > best.score) best = { food: r.food, score: adjusted }
       }
     } catch {
@@ -112,7 +122,7 @@ export async function resolveItems(items: AiFoodItem[]): Promise<ResolvedItem[]>
 }
 
 export async function resolveItem(raw: AiFoodItem): Promise<ResolvedItem> {
-  const { food, quality } = await findFood(raw.name, raw.brand)
+  const { food, quality } = await findFood(raw.name, raw.brand, raw.germanName)
 
   // --- portion -----------------------------------------------------
   let grams: number
@@ -142,7 +152,7 @@ export async function resolveItem(raw: AiFoodItem): Promise<ResolvedItem> {
       grams = (serving?.amount ?? 100) * raw.quantity
       unit = food?.basis ?? 'g'
       portionSpread = 0.5
-      portionNote = `Maß „${raw.measure}" unbekannt — geschätzt`
+      portionNote = `unknown measure "${raw.measure}" — estimated`
     }
   }
 
@@ -168,12 +178,12 @@ export async function resolveItem(raw: AiFoodItem): Promise<ResolvedItem> {
 
   const parts = [portionNote]
   if (food) {
-    parts.push(food.provenance ?? (food.source === 'off' ? 'Open Food Facts' : 'eigene Daten'))
+    parts.push(food.provenance ?? (food.source === 'off' ? 'Open Food Facts' : 'your data'))
     if (raw.state !== 'as_sold' && food.yieldFactor && food.state !== 'as_sold' && raw.state !== food.state) {
-      parts.push(`${raw.state === 'cooked' ? 'gegart' : 'roh'} umgerechnet (Faktor ${food.yieldFactor})`)
+      parts.push(`converted from ${raw.state} (yield ${food.yieldFactor})`)
     }
   } else {
-    parts.push('kein Datenbank-Treffer')
+    parts.push('no database match')
   }
 
   return {

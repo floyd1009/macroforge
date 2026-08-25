@@ -4,14 +4,14 @@ import { ChevronLeft, Cloud, HardDrive, Search, ScanLine, X } from 'lucide-react
 import { Badge, Button, Card, EmptyState, IconButton, Input, Screen, Segmented, Sheet, Spinner } from '../components/ui'
 import { MacroChips } from '../components/MacroBars'
 import { todayKey } from '../lib/date'
-import { kcal as fmtKcal, num } from '../lib/format'
+import { altName, kcal as fmtKcal, num } from '../lib/format'
 import { scale } from '../lib/nutrition'
 import { addEntry, searchLocalFoods, upsertFood } from '../lib/repo'
 import { MEAL_SLOTS, type Food, type MealSlot } from '../lib/types'
 import { OffError, isOnline, searchProducts, type NormalisedProduct } from '../services/openfoodfacts'
 
 const MEAL_LABELS: Record<MealSlot, string> = {
-  breakfast: 'Frühstück', lunch: 'Mittag', dinner: 'Abend', snack: 'Snack',
+  breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack',
 }
 
 function currentMeal(): MealSlot {
@@ -74,14 +74,14 @@ export default function AddFood() {
 
   return (
     <Screen
-      title="Essen hinzufügen"
+      title="Add food"
       left={
-        <IconButton label="Zurück" onClick={() => navigate(-1)}>
+        <IconButton label="Back" onClick={() => navigate(-1)}>
           <ChevronLeft size={20} />
         </IconButton>
       }
       right={
-        <IconButton label="Barcode scannen" onClick={() => navigate('/scan')}>
+        <IconButton label="Scan barcode" onClick={() => navigate('/scan')}>
           <ScanLine size={19} />
         </IconButton>
       }
@@ -93,7 +93,7 @@ export default function AddFood() {
             type="search"
             autoFocus
             enterKeyHint="search"
-            placeholder="Lebensmittel oder Marke suchen"
+            placeholder="Search food or brand"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void searchOnline()}
@@ -102,7 +102,7 @@ export default function AddFood() {
           {query && (
             <button
               onClick={() => { setQuery(''); setRemote([]) }}
-              aria-label="Suche leeren"
+              aria-label="Clear search"
               className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-txt-3"
             >
               <X size={15} />
@@ -120,9 +120,9 @@ export default function AddFood() {
           {searching ? <Spinner className="size-3.5" /> : <Cloud size={15} />}
           {isOnline()
             ? searching
-              ? 'Sucht bei Open Food Facts…'
-              : `„${query}" online suchen (Aldi, REWE, dm, EDEKA …)`
-            : 'Offline — nur lokale Treffer'}
+              ? 'Searching Open Food Facts…'
+              : `Search "${query}" online (Aldi, REWE, dm, EDEKA …)`
+            : 'Offline — local results only'}
         </button>
       )}
 
@@ -135,11 +135,11 @@ export default function AddFood() {
       {results.length === 0 ? (
         <EmptyState
           icon={<Search size={28} />}
-          title={query ? 'Nichts gefunden' : 'Zuletzt benutzt erscheint hier'}
+          title={query ? 'No matches' : 'Recently used will appear here'}
           body={
             query
-              ? 'Versuch es mit der Onlinesuche oder scanne den Barcode.'
-              : 'Suche nach einem Lebensmittel oder scanne eine Verpackung.'
+              ? 'Try the online search, or scan the barcode.'
+              : 'Search for a food, or scan a package.'
           }
         />
       ) : (
@@ -151,32 +151,36 @@ export default function AddFood() {
                 className="flex w-full items-center gap-3 rounded-tile border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-2"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.9375rem] leading-snug">
-                    {food.nameDe ?? food.name}
+                  <p className="truncate text-[0.9375rem] font-bold leading-snug tracking-[-0.015em]">
+                    {food.name || food.nameDe}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                     {food.brand && (
                       <span className="truncate text-[0.6875rem] text-txt-3">{food.brand}</span>
                     )}
+                    {/* Keep the German name visible: it is what is on the packet. */}
+                    {altName(food) && (
+                      <span className="truncate text-[0.6875rem] text-txt-4">{altName(food)}</span>
+                    )}
                     {food.retailer && <Badge tone="brand">{food.retailer}</Badge>}
                     {source === 'local' ? (
                       <Badge>
-                        <HardDrive size={9} /> lokal
+                        <HardDrive size={9} /> local
                       </Badge>
                     ) : (
                       <Badge>OFF</Badge>
                     )}
-                    {warnings.length > 0 && <Badge tone="warn">Daten prüfen</Badge>}
+                    {warnings.length > 0 && <Badge tone="warn">check data</Badge>}
                   </div>
                   <div className="mt-1.5">
                     <MacroChips n={food.per100} />
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-[0.9375rem] font-medium tabular-nums">
+                  <div className="numeric text-[1.0625rem] font-extrabold">
                     {fmtKcal(food.per100.kcal)}
                   </div>
-                  <div className="text-[0.6875rem] text-txt-3">/ 100 {food.basis}</div>
+                  <div className="text-[0.625rem] font-semibold text-txt-4">/100 {food.basis}</div>
                 </div>
               </button>
             </li>
@@ -236,7 +240,7 @@ export function PortionSheet({
   }
 
   return (
-    <Sheet open onClose={onClose} title={food.nameDe ?? food.name}>
+    <Sheet open onClose={onClose} title={food.name || food.nameDe}>
       <div className="space-y-4 pb-2">
         {food.brand && <p className="-mt-2 text-[0.8125rem] text-txt-3">{food.brand}</p>}
 
@@ -248,7 +252,7 @@ export function PortionSheet({
 
         <div className="flex gap-2">
           <div className="w-24">
-            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Menge</label>
+            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Amount</label>
             <Input
               type="text"
               inputMode="decimal"
@@ -258,7 +262,7 @@ export function PortionSheet({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Portion</label>
+            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Serving</label>
             <select
               value={servingLabel}
               onChange={(e) => setServingLabel(e.target.value)}
@@ -275,19 +279,19 @@ export function PortionSheet({
 
         {needsYield && (
           <div>
-            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Gewogen als</label>
+            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Weighed as</label>
             <Segmented
               options={[
-                { value: 'raw' as const, label: 'Roh' },
-                { value: 'cooked' as const, label: 'Gegart' },
+                { value: 'raw' as const, label: 'Raw' },
+                { value: 'cooked' as const, label: 'Cooked' },
               ]}
               value={state}
               onChange={setState}
             />
             <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-txt-3">
               {food.yieldFactor! < 1
-                ? `Beim Garen verliert dieses Lebensmittel Wasser (Faktor ${num(food.yieldFactor!, 2)}). Gegart gewogen entspricht also mehr Rohware — und mehr Eiweiß.`
-                : `Beim Garen nimmt dieses Lebensmittel Wasser auf (Faktor ${num(food.yieldFactor!, 2)}).`}
+                ? `This food loses water when cooked (yield ${num(food.yieldFactor!, 2)}). A cooked weight therefore came from more raw food — and carries more protein.`
+                : `This food absorbs water when cooked (yield ${num(food.yieldFactor!, 2)}).`}
             </p>
           </div>
         )}
@@ -295,7 +299,9 @@ export function PortionSheet({
         <Card className="p-4">
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-2xl font-bold leading-none text-kcal">{fmtKcal(nutrients.kcal)}</div>
+              <div className="numeric text-[1.75rem] font-extrabold leading-none text-kcal">
+                {fmtKcal(nutrients.kcal)}
+              </div>
               <div className="mt-1 text-[0.6875rem] text-txt-3">
                 kcal · {num(Math.round(effectiveGrams))} {food.basis}
               </div>
@@ -305,11 +311,11 @@ export function PortionSheet({
         </Card>
 
         {food.provenance && (
-          <p className="text-[0.6875rem] text-txt-3">Quelle: {food.provenance}</p>
+          <p className="text-[0.6875rem] text-txt-3">Source: {food.provenance}</p>
         )}
 
         <Button variant="primary" className="w-full" onClick={() => void save()} disabled={qty <= 0}>
-          Hinzufügen
+          Add
         </Button>
       </div>
     </Sheet>

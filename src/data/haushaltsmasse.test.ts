@@ -130,3 +130,58 @@ describe('regional synonyms', () => {
     }
   })
 })
+
+describe('English measures alongside German', () => {
+  it.each([
+    ['slice', 'scheibe'],
+    ['slices', 'scheibe'],
+    ['tablespoon', 'el'],
+    ['tbsp', 'el'],
+    ['teaspoon', 'tl'],
+    ['handful', 'handvoll'],
+    ['glass', 'glas'],
+    ['can', 'dose'],
+    ['scoop', 'kugel'],
+    ['pinch', 'prise'],
+    ['serving', 'portion'],
+  ])('resolves the English measure %s', (input, key) => {
+    expect(findMeasure(input)?.key).toBe(key)
+  })
+
+  it('gives the same answer in either language', () => {
+    expect(resolveMeasure('slices', 2, 'bread')!.grams).toBe(
+      resolveMeasure('Scheiben', 2, 'Brot')!.grams,
+    )
+    expect(resolveMeasure('tbsp', 1, 'olive oil')!.grams).toBe(
+      resolveMeasure('EL', 1, 'Olivenöl')!.grams,
+    )
+    expect(resolveMeasure('handful', 1, 'almonds')!.grams).toBe(
+      resolveMeasure('Handvoll', 1, 'Mandeln')!.grams,
+    )
+  })
+
+  it('reads English spoken quantities', () => {
+    expect(parseQuantity('one')).toBe(1)
+    expect(parseQuantity('three')).toBe(3)
+    expect(parseQuantity('half')).toBe(0.5)
+    expect(parseQuantity('a')).toBe(1)
+  })
+
+  it('accepts both decimal conventions from either keyboard', () => {
+    expect(parseQuantity('1.5')).toBe(1.5)
+    expect(parseQuantity('1,5')).toBe(1.5)
+  })
+
+  it('reads a comma as a thousands separator when it clearly is one', () => {
+    // "1,500 g" from an English keyboard is 1500, not 1.5.
+    expect(parseQuantity('1,500')).toBe(1500)
+  })
+
+  it('resolves an English food name to its German portion mass', () => {
+    // The interface is English but the shop is German: "a slice of bread"
+    // must still mean a 45 g German slice, not an American one.
+    expect(resolveMeasure('slice', 1, 'wholemeal bread')!.grams).toBe(45)
+    expect(resolveMeasure('piece', 1, 'egg')!.grams).toBe(58)
+    expect(resolveMeasure('glass', 1, 'beer')!.grams).toBe(330)
+  })
+})

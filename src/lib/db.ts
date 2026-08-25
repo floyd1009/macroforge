@@ -70,7 +70,7 @@ export const DEFAULT_PROFILE: Profile = {
   proteinPerKg: 2.0,
   fatPerKg: 0.8,
   units: 'metric',
-  locale: 'de',
+  locale: 'en',
   createdAt: 0,
   updatedAt: 0,
 }

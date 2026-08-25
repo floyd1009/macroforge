@@ -99,14 +99,14 @@ describe('normalise — bad data is rejected, not logged', () => {
     const r = normalise(base({ proteins_100g: 20, carbohydrates_100g: 10, fat_100g: 5 }))!
     // 20*4 + 10*4 + 5*9 = 165
     expect(r.food.per100.kcal).toBeCloseTo(165, 0)
-    expect(r.warnings.join(' ')).toMatch(/berechnet/)
+    expect(r.warnings.join(' ')).toMatch(/derived from macros/)
   })
 
   it('flags saturated fat exceeding total fat', () => {
     const r = normalise(
       base({ 'energy-kcal_100g': 200, proteins_100g: 5, carbohydrates_100g: 20, fat_100g: 5, 'saturated-fat_100g': 12 }),
     )!
-    expect(r.warnings.join(' ')).toMatch(/Gesättigte/)
+    expect(r.warnings.join(' ')).toMatch(/saturated fat/)
     expect(r.food.verified).toBe(false)
   })
 

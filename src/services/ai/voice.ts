@@ -24,11 +24,11 @@ export async function analyseText(
   opts: { signal?: AbortSignal; settings?: AiSettings } = {},
 ): Promise<VoiceAnalysis> {
   const text = transcript.trim()
-  if (!text) throw new AiError('Nichts zu erkennen', 'bad-response')
+  if (!text) throw new AiError('Nothing to read', 'bad-response')
 
   const settings = opts.settings ?? (await getSettings()).ai
   if (!settings.enabled || (!settings.apiKey && !settings.proxyUrl)) {
-    throw new AiError('Diktat-Erkennung braucht einen API-Key (Einstellungen → KI)', 'no-key')
+    throw new AiError('Dictation needs an API key (Settings → AI)', 'no-key')
   }
 
   const result = await callStructured<VoiceResult>({
@@ -36,7 +36,7 @@ export async function analyseText(
     // Text parsing is easy; the small model is both faster and ~5x cheaper.
     model: MODEL_TEXT,
     system: VOICE_SYSTEM,
-    text: `Zerlege diese Mahlzeitbeschreibung:\n\n"${text}"`,
+    text: `Split this meal description into entries:\n\n"${text}"`,
     schema: VOICE_TOOL.schema as unknown as Record<string, unknown>,
     toolName: VOICE_TOOL.name,
     toolDescription: VOICE_TOOL.description,

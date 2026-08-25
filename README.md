@@ -1,6 +1,6 @@
 # MacroForge
 
-Offline-first macro and training tracker, built for German supermarkets.
+Offline-first macro and training tracker: English interface, German supermarkets.
 No account, no server, no subscription — everything lives on your phone.
 
 Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
@@ -20,8 +20,9 @@ Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
 - **Barcode scanning** with a manual-entry fallback.
 - **Photo logging** — describes what is on the plate and resolves it against
   real composition data, with an honest error band.
-- **Voice logging** via iOS keyboard dictation, parsing German household
-  measures ("zwei Scheiben Vollkornbrot", "ein EL Öl", "anderthalb Brötchen").
+- **Voice logging** via iOS keyboard dictation, parsing household measures in
+  English *or* German — "two slices of Vollkornbrot", "a tbsp of oil",
+  "anderthalb Brötchen" all resolve to grams against a hand-curated table.
 - **Training log** with e1RM estimates and weekly hard-set volume per muscle
   group.
 
@@ -37,7 +38,8 @@ Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
   measured. Scanned entries carry a ±15 % band.
 - **Use red for data.** Red is the brand colour and the universal error colour;
   putting it in macro bars would make the app read as judgemental and destroy
-  its error vocabulary. Macro colours are blue/violet/amber.
+  its error vocabulary. Macro colours are blue/violet/amber, and palette
+  contrast is pinned by tests so it cannot regress below WCAG AA.
 
 ## Accuracy work most trackers skip
 
@@ -71,7 +73,7 @@ npm run test
 1. Push this repo to GitHub and enable **Settings → Pages → Source: GitHub
    Actions**. The included workflow builds and deploys on every push to `main`.
 2. Open the resulting `https://<user>.github.io/<repo>/` URL **in Safari**.
-3. Share → **Zum Home-Bildschirm** → Hinzufügen.
+3. Share → **Add to Home Screen** → Add.
 
 Installing is not cosmetic. Safari's tracking prevention deletes all
 script-writable storage after seven days without interaction, and home-screen
@@ -81,7 +83,7 @@ diary. The app says so on its settings screen.
 ## AI features (optional)
 
 Photo and voice logging need your own Anthropic API key, entered under
-Settings → KI. There is no server in this project, so the key stays on your
+Settings → AI. There is no server in this project, so the key stays on your
 device and goes only to `api.anthropic.com`. Set a spend limit on the key.
 
 Roughly 1–2 cents per photo, under 0.1 cents per dictation. Search, barcode

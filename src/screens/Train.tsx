@@ -24,7 +24,7 @@ export default function Train() {
 
   if (!data) {
     return (
-      <Screen title="Training">
+      <Screen title="Train">
         <div className="mt-4 space-y-3">
           <div className="skeleton h-32 rounded-card" />
         </div>
@@ -49,7 +49,7 @@ export default function Train() {
   }
 
   return (
-    <Screen title="Training">
+    <Screen title="Train">
       {today ? (
         <ActiveWorkout
           workout={today}
@@ -60,21 +60,21 @@ export default function Train() {
         <Card className="mt-2">
           <EmptyState
             icon={<Dumbbell size={28} />}
-            title="Kein laufendes Training"
-            body="Starte ein Training, um Sätze, Gewichte und Wiederholungen zu protokollieren."
+            title="No workout in progress"
+            body="Start a session to log sets, weights and reps."
             action={
               <Button variant="primary" onClick={() => void startWorkout()}>
-                Training starten
+                Start workout
               </Button>
             }
           />
         </Card>
       )}
 
-      <SectionTitle>Wochenvolumen</SectionTitle>
+      <SectionTitle>Weekly volume</SectionTitle>
       {volume.size === 0 ? (
         <Card>
-          <EmptyState title="Diese Woche noch nichts trainiert" />
+          <EmptyState title="Nothing trained this week" />
         </Card>
       ) : (
         <Card className="p-4">
@@ -87,17 +87,17 @@ export default function Train() {
               ))}
           </div>
           <p className="mt-3.5 border-t border-line pt-3 text-[0.6875rem] leading-relaxed text-txt-3">
-            Harte Sätze pro Woche. Aufwärmsätze zählen nicht, Sätze weit vom Muskelversagen nur
-            halb. Die Marken sind allgemeine Richtwerte aus der Trainingsliteratur, keine
-            persönliche Vorgabe.
+            Hard sets per week. Warm-ups don't count and sets well short of failure count half.
+            The markers are general guidance from the training literature, not a prescription for
+            you specifically.
           </p>
         </Card>
       )}
 
-      <SectionTitle>Letzte Einheiten</SectionTitle>
+      <SectionTitle>Recent sessions</SectionTitle>
       {workouts.filter((w) => w.endedAt).length === 0 ? (
         <Card>
-          <EmptyState title="Noch keine abgeschlossenen Einheiten" />
+          <EmptyState title="No finished sessions yet" />
         </Card>
       ) : (
         <ul className="space-y-2">
@@ -110,16 +110,16 @@ export default function Train() {
                 <li key={w.id}>
                   <Card className="flex items-center justify-between px-4 py-3">
                     <div>
-                      <p className="text-[0.9375rem]">{w.name ?? 'Training'}</p>
+                      <p className="text-[0.9375rem]">{w.name ?? 'Workout'}</p>
                       <p className="mt-0.5 text-[0.6875rem] text-txt-3">
-                        {humanDate(w.date)} · {names.size} Übungen · {w.sets.length} Sätze
+                        {humanDate(w.date)} · {names.size} exercises · {w.sets.length} sets
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="text-[0.9375rem] font-medium tabular-nums">
                         {num(Math.round(tonnage(w.sets)))} kg
                       </div>
-                      <div className="text-[0.6875rem] text-txt-3">Gesamtlast</div>
+                      <div className="text-[0.6875rem] text-txt-3">total load</div>
                     </div>
                   </Card>
                 </li>
@@ -219,14 +219,14 @@ function ActiveWorkout({
     <Card className="mt-2 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[0.9375rem] font-medium">Laufendes Training</p>
+          <p className="text-[0.9375rem] font-medium">Workout in progress</p>
           <p className="mt-0.5 text-[0.6875rem] text-txt-3">
-            {elapsed} min · {workout.sets.filter((s) => s.reps > 0).length} Sätze ·{' '}
-            {num(hardSets(workout.sets), 1)} harte Sätze
+            {elapsed} min · {workout.sets.filter((s) => s.reps > 0).length} sets ·{' '}
+            {num(hardSets(workout.sets), 1)} hard sets
           </p>
         </div>
         <Button onClick={() => void finish()}>
-          <Check size={16} /> Beenden
+          <Check size={16} /> Finish
         </Button>
       </div>
 
@@ -243,7 +243,7 @@ function ActiveWorkout({
       </div>
 
       <Button className="mt-4 w-full" onClick={onAddExercise}>
-        <Plus size={16} /> Übung hinzufügen
+        <Plus size={16} /> Add exercise
       </Button>
     </Card>
   )
@@ -287,7 +287,7 @@ function ExerciseBlock({
   return (
     <div className="rounded-tile border border-line bg-surface-2 p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[0.9375rem]">{exercise?.nameDe ?? exercise?.name ?? 'Übung'}</p>
+        <p className="text-[0.9375rem]">{exercise?.name ?? exercise?.nameDe ?? 'Exercise'}</p>
         {pr && (
           <Badge tone="brand">
             <Trophy size={9} /> {Math.round(pr.e1rm)} kg
@@ -299,7 +299,7 @@ function ExerciseBlock({
         <div className="grid grid-cols-[1.5rem_1fr_1fr_2.5rem_1.75rem] items-center gap-2 px-0.5 text-[0.625rem] uppercase tracking-wide text-txt-4">
           <span>#</span>
           <span>kg</span>
-          <span>Wdh.</span>
+          <span>reps</span>
           <span>RIR</span>
           <span />
         </div>
@@ -331,7 +331,7 @@ function ExerciseBlock({
               className="h-10 px-1 py-0 text-center text-[0.8125rem]"
             />
             <button
-              aria-label="Satz entfernen"
+              aria-label="Remove set"
               onClick={() => onChange(allSets.filter((x) => x.id !== s.id))}
               className="grid size-7 place-items-center rounded-lg text-txt-4 active:bg-surface-3"
             >
@@ -343,10 +343,10 @@ function ExerciseBlock({
 
       {sets.some((s) => s.reps > 0 && s.weightKg > 0) && (
         <p className="mt-2 text-[0.6875rem] text-txt-3">
-          Bester Satz ≈ {Math.round(
+          Best set ≈ {Math.round(
             Math.max(...sets.filter((s) => s.reps > 0).map((s) => e1rm(s.weightKg, s.reps, s.rpe).value)),
           )}{' '}
-          kg geschätztes 1RM
+          kg estimated 1RM
         </p>
       )}
 
@@ -354,7 +354,7 @@ function ExerciseBlock({
         onClick={addSet}
         className="mt-2 w-full rounded-lg border border-line py-2 text-[0.8125rem] text-txt-2 active:bg-surface-3"
       >
-        + Satz
+        + Set
       </button>
     </div>
   )
@@ -372,17 +372,17 @@ function ExercisePicker({
   const [q, setQ] = useState('')
   const filtered = exercises
     .filter((e) => {
-      const hay = `${e.nameDe ?? ''} ${e.name} ${e.equipment ?? ''}`.toLowerCase()
+      const hay = `${e.name} ${e.nameDe ?? ''} ${e.equipment ?? ''}`.toLowerCase()
       return hay.includes(q.toLowerCase())
     })
     .sort((a, b) => (b.useCount ?? 0) - (a.useCount ?? 0))
 
   return (
-    <Sheet open onClose={onClose} title="Übung wählen" full>
+    <Sheet open onClose={onClose} title="Choose exercise" full>
       <Input
         autoFocus
         type="search"
-        placeholder="Übung suchen"
+        placeholder="Search exercises"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         className="mb-3"
@@ -395,7 +395,7 @@ function ExercisePicker({
               className="flex w-full items-center justify-between gap-3 rounded-tile border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-2"
             >
               <div className="min-w-0">
-                <p className="truncate text-[0.9375rem]">{e.nameDe ?? e.name}</p>
+                <p className="truncate text-[0.9375rem]">{e.name}</p>
                 <p className="mt-0.5 text-[0.6875rem] text-txt-3">
                   {MUSCLE_LABELS[e.primary]}
                   {e.equipment && ` · ${e.equipment}`}

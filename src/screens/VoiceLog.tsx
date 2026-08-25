@@ -12,10 +12,10 @@ import { analyseText, detectVoiceMode, type VoiceAnalysis } from '../services/ai
 import type { ResolvedItem } from '../services/ai/resolve'
 
 const EXAMPLES = [
-  'Zwei Scheiben Vollkornbrot mit Butter und einem Spiegelei',
-  'Ein Becher Magerquark mit einer Handvoll Heidelbeeren',
-  '150 g gebratene Hähnchenbrust, eine Portion Reis und Brokkoli',
-  'Anderthalb Brötchen mit Kochschinken und ein Glas Milch',
+  'Two slices of Vollkornbrot with butter and a fried egg',
+  'A pot of Magerquark with a handful of blueberries',
+  '150 g of pan-fried chicken breast, a portion of rice and broccoli',
+  'One and a half Brötchen with ham and a glass of milk',
 ]
 
 export default function VoiceLog() {
@@ -45,9 +45,9 @@ export default function VoiceLog() {
       const result = await analyseText(text)
       setAnalysis(result)
       if (result.result.meal) setMeal(result.result.meal)
-      if (result.items.length === 0) setError('Daraus konnte ich kein Lebensmittel lesen.')
+      if (result.items.length === 0) setError('No food could be read from that.')
     } catch (e) {
-      setError(e instanceof AiError ? e.message : 'Erkennung fehlgeschlagen.')
+      setError(e instanceof AiError ? e.message : 'Parsing failed.')
     } finally {
       setBusy(false)
     }
@@ -61,7 +61,7 @@ export default function VoiceLog() {
         date: todayKey(),
         meal,
         food: item.food,
-        name: item.food?.nameDe ?? item.food?.name ?? item.raw.name,
+        name: item.food?.name ?? item.food?.nameDe ?? item.raw.name,
         brand: item.food?.brand,
         amount: item.grams,
         unit: item.unit,
@@ -86,9 +86,9 @@ export default function VoiceLog() {
   if (analysis && analysis.items.length > 0) {
     return (
       <Screen
-        title="Prüfen & speichern"
+        title="Review & save"
         left={
-          <IconButton label="Zurück" onClick={() => setAnalysis(null)}>
+          <IconButton label="Back" onClick={() => setAnalysis(null)}>
             <ChevronLeft size={20} />
           </IconButton>
         }
@@ -110,9 +110,9 @@ export default function VoiceLog() {
 
   return (
     <Screen
-      title="Diktieren"
+      title="Speak or type"
       left={
-        <IconButton label="Zurück" onClick={() => navigate(-1)}>
+        <IconButton label="Back" onClick={() => navigate(-1)}>
           <ChevronLeft size={20} />
         </IconButton>
       }
@@ -123,18 +123,18 @@ export default function VoiceLog() {
           rows={5}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Sag oder tippe, was du gegessen hast…"
+          placeholder="Say or type what you ate…"
           className="border-0 bg-transparent px-0 py-0 text-[1.0625rem] leading-relaxed focus:ring-0"
         />
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
           <p className="flex items-center gap-1.5 text-[0.6875rem] text-txt-3">
             <Mic size={12} />
             {mode === 'keyboard-dictation'
-              ? 'Mikrofon-Taste auf der Tastatur nutzen'
-              : 'Tippen oder diktieren'}
+              ? 'Use the microphone key on your keyboard'
+              : 'Type or dictate'}
           </p>
           <Button variant="primary" onClick={() => void run()} loading={busy} disabled={!text.trim()}>
-            <Sparkles size={16} /> Erkennen
+            <Sparkles size={16} /> Read it
           </Button>
         </div>
       </Card>
@@ -148,14 +148,14 @@ export default function VoiceLog() {
       {busy && (
         <div className="mt-8 grid place-items-center gap-2">
           <Spinner className="size-6 text-brand-text" />
-          <p className="text-[0.8125rem] text-txt-3">Wird zerlegt…</p>
+          <p className="text-[0.8125rem] text-txt-3">Reading…</p>
         </div>
       )}
 
       {!busy && (
         <>
           <p className="mb-2 mt-6 text-[0.6875rem] font-semibold uppercase tracking-wider text-txt-3">
-            Beispiele
+            Examples
           </p>
           <div className="space-y-2">
             {EXAMPLES.map((e) => (
@@ -173,13 +173,13 @@ export default function VoiceLog() {
             <div className="flex items-start gap-2.5">
               <Info size={15} className="mt-0.5 shrink-0 text-txt-3" />
               <div className="text-[0.8125rem] leading-relaxed text-txt-2">
-                <p className="font-medium text-txt">Warum die Tastatur statt eines Aufnahme-Knopfs</p>
+                <p className="font-medium text-txt">Why the keyboard, not a record button</p>
                 <p className="mt-1.5 text-txt-3">
-                  In einer installierten Web-App auf dem iPhone funktioniert die Web-Speech-API
-                  nicht zuverlässig — sie meldet Erfolg und liefert nichts. Die Diktier-Taste der
-                  iOS-Tastatur nutzt Apples eigene Erkennung, ist genauer, braucht keine
-                  Berechtigung und kostet nichts. Deine Stimme verlässt das Gerät nicht über diese
-                  App; nur der fertige Text wird zur Auswertung geschickt.
+                  Inside an installed web app on iPhone the Web Speech API does not work — it
+                  reports success and delivers nothing. The dictation key on the iOS keyboard uses
+                  Apple's own recognition instead: more accurate, no permission prompt, no cost.
+                  Your voice never leaves the device through this app — only the finished text is
+                  sent to be parsed.
                 </p>
               </div>
             </div>

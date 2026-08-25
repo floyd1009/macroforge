@@ -23,14 +23,14 @@ export default function SettingsScreen() {
 
   if (!data) {
     return (
-      <Screen title="Einstellungen">
+      <Screen title="Settings">
         <div className="mt-4 skeleton h-64 rounded-card" />
       </Screen>
     )
   }
 
   return (
-    <Screen title="Einstellungen">
+    <Screen title="Settings">
       <InstallCard />
       <ProfileCard profile={data.profile} />
       <TargetsCard plan={data.plan} />
@@ -61,17 +61,17 @@ function InstallCard() {
         <div className="flex items-start gap-2.5">
           <Check size={17} className="mt-0.5 shrink-0 text-ok" />
           <div>
-            <p className="text-[0.9375rem] font-medium">Als App installiert</p>
+            <p className="text-[0.9375rem] font-medium">Installed as an app</p>
             <p className="mt-1 text-[0.8125rem] leading-relaxed text-txt-3">
-              Deine Daten sind dauerhaft gespeichert
-              {persisted === false && ' (Speicherschutz noch nicht bestätigt)'}.
+              Your data is stored persistently
+              {persisted === false && ' (persistent storage not yet granted)'}.
             </p>
             {persisted === false && (
               <Button
                 className="mt-2.5"
                 onClick={() => void requestPersistence().then(setPersisted)}
               >
-                Speicher schützen
+                Request persistent storage
               </Button>
             )}
           </div>
@@ -85,28 +85,28 @@ function InstallCard() {
       <div className="flex items-start gap-2.5">
         <TriangleAlert size={17} className="mt-0.5 shrink-0 text-warn" />
         <div>
-          <p className="text-[0.9375rem] font-medium">Zum Home-Bildschirm hinzufügen</p>
+          <p className="text-[0.9375rem] font-medium">Add to your Home Screen</p>
           <p className="mt-1 text-[0.8125rem] leading-relaxed text-txt-2">
-            Wichtig, nicht optional: Safari löscht die Daten von Websites nach sieben Tagen ohne
-            Nutzung. Installierte Web-Apps sind davon ausgenommen. Ohne Installation kann dein
-            gesamtes Ernährungstagebuch verschwinden.
+            Important, not optional: Safari deletes website data after seven days without use.
+            Installed web apps are exempt. Without installing, your entire food diary can
+            disappear.
           </p>
           <ol className="mt-3 space-y-1.5 text-[0.8125rem] text-txt-2">
             <li className="flex gap-2">
               <span className="text-txt-4">1.</span>
               <span className="inline-flex items-center gap-1.5">
-                In Safari auf <Share size={13} className="inline" /> Teilen tippen
+                In Safari, tap <Share size={13} className="inline" /> Share
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-txt-4">2.</span>
               <span className="inline-flex items-center gap-1.5">
-                <Smartphone size={13} className="inline" /> „Zum Home-Bildschirm"
+                <Smartphone size={13} className="inline" /> "Add to Home Screen"
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-txt-4">3.</span>
-              <span>Hinzufügen — danach die App über das Symbol öffnen</span>
+              <span>Add — then open the app from its icon</span>
             </li>
           </ol>
         </div>
@@ -116,11 +116,11 @@ function InstallCard() {
 }
 
 const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
-  sedentary: 'Sitzend',
-  light: 'Leicht aktiv',
-  moderate: 'Mäßig aktiv',
-  high: 'Sehr aktiv',
-  athlete: 'Athlet',
+  sedentary: 'Sedentary',
+  light: 'Lightly active',
+  moderate: 'Moderately active',
+  high: 'Very active',
+  athlete: 'Athlete',
 }
 
 function ProfileCard({ profile }: { profile: Profile }) {
@@ -130,13 +130,13 @@ function ProfileCard({ profile }: { profile: Profile }) {
 
   return (
     <>
-      <SectionTitle>Profil</SectionTitle>
+      <SectionTitle>Profile</SectionTitle>
       <Card className="space-y-4 p-4">
-        <Field label="Geschlecht">
+        <Field label="Sex">
           <Segmented
             options={[
-              { value: 'male' as Sex, label: 'Männlich' },
-              { value: 'female' as Sex, label: 'Weiblich' },
+              { value: 'male' as Sex, label: 'Male' },
+              { value: 'female' as Sex, label: 'Female' },
             ]}
             value={profile.sex}
             onChange={(v) => void save({ sex: v })}
@@ -144,7 +144,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Größe (cm)">
+          <Field label="Height (cm)">
             <Input
               type="text"
               inputMode="numeric"
@@ -155,7 +155,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
               }}
             />
           </Field>
-          <Field label="Geburtsdatum">
+          <Field label="Date of birth">
             <Input
               type="date"
               defaultValue={profile.birthDate ?? ''}
@@ -164,7 +164,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
           </Field>
         </div>
 
-        <Field label="Aktivität" hint="Ohne Training gerechnet — Trainingseinheiten erhöhen deinen gemessenen Verbrauch automatisch.">
+        <Field label="Activity" hint="Excluding training — logged sessions raise your measured expenditure on their own.">
           <select
             value={profile.activity}
             onChange={(e) => void save({ activity: e.target.value as ActivityLevel })}
@@ -178,12 +178,12 @@ function ProfileCard({ profile }: { profile: Profile }) {
           </select>
         </Field>
 
-        <Field label="Ziel">
+        <Field label="Goal">
           <Segmented
             options={[
-              { value: 'lose' as GoalDirection, label: 'Abnehmen' },
-              { value: 'maintain' as GoalDirection, label: 'Halten' },
-              { value: 'gain' as GoalDirection, label: 'Aufbauen' },
+              { value: 'lose' as GoalDirection, label: 'Lose' },
+              { value: 'maintain' as GoalDirection, label: 'Maintain' },
+              { value: 'gain' as GoalDirection, label: 'Gain' },
             ]}
             value={profile.goal}
             onChange={(v) =>
@@ -197,8 +197,8 @@ function ProfileCard({ profile }: { profile: Profile }) {
 
         {profile.goal !== 'maintain' && (
           <Field
-            label={`Tempo: ${num(Math.abs(profile.rateKgPerWeek), 2)} kg pro Woche`}
-            hint="Schneller ist selten besser — steilere Defizite kosten vor allem Muskelmasse und Durchhaltevermögen."
+            label={`Rate: ${num(Math.abs(profile.rateKgPerWeek), 2)} kg per week`}
+            hint="Faster is rarely better — steeper deficits mostly cost lean mass and adherence."
           >
             <input
               type="range"
@@ -217,7 +217,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Eiweiß g/kg">
+          <Field label="Protein g/kg">
             <Input
               type="text"
               inputMode="decimal"
@@ -228,7 +228,7 @@ function ProfileCard({ profile }: { profile: Profile }) {
               }}
             />
           </Field>
-          <Field label="Fett g/kg">
+          <Field label="Fat g/kg">
             <Input
               type="text"
               inputMode="decimal"
@@ -249,14 +249,14 @@ function TargetsCard({ plan }: { plan: Awaited<ReturnType<typeof buildDayPlan>> 
   const { targets, expenditure } = plan
   return (
     <>
-      <SectionTitle>Aktuelle Ziele</SectionTitle>
+      <SectionTitle>Current targets</SectionTitle>
       <Card className="p-4">
         <div className="grid grid-cols-4 gap-2 text-center">
           {[
             ['kcal', fmtKcal(targets.kcal)],
-            ['Eiweiß', `${targets.protein} g`],
-            ['KH', `${targets.carbs} g`],
-            ['Fett', `${targets.fat} g`],
+            ['Protein', `${targets.protein} g`],
+            ['Carbs', `${targets.carbs} g`],
+            ['Fat', `${targets.fat} g`],
           ].map(([label, value]) => (
             <div key={label}>
               <div className="text-[0.9375rem] font-semibold tabular-nums">{value}</div>
@@ -265,8 +265,8 @@ function TargetsCard({ plan }: { plan: Awaited<ReturnType<typeof buildDayPlan>> 
           ))}
         </div>
         <p className="mt-3.5 border-t border-line pt-3 text-[0.6875rem] leading-relaxed text-txt-3">
-          Abgeleitet aus einem Verbrauch von {fmtKcal(expenditure.tdee)} kcal. {expenditure.note}.
-          Eiweiß und Fett werden zuerst gesetzt, Kohlenhydrate füllen den Rest auf.
+          Derived from an expenditure of {fmtKcal(expenditure.tdee)} kcal. {expenditure.note}.
+          Protein and fat are set first; carbohydrate fills the remainder.
         </p>
       </Card>
     </>
@@ -286,10 +286,10 @@ function AiCard({ settings }: { settings: Awaited<ReturnType<typeof getSettings>
       await testKey(next)
       await db.settings.update('settings', { ai: next, updatedAt: Date.now() })
       setState('ok')
-      setMessage('Key funktioniert. Foto- und Diktat-Erkennung sind aktiv.')
+      setMessage('Key works. Photo and dictation logging are active.')
     } catch (e) {
       setState('error')
-      setMessage(e instanceof AiError ? e.message : 'Prüfung fehlgeschlagen')
+      setMessage(e instanceof AiError ? e.message : 'Check failed')
     }
   }
 
@@ -306,18 +306,18 @@ function AiCard({ settings }: { settings: Awaited<ReturnType<typeof getSettings>
   return (
     <>
       <SectionTitle
-        action={settings.enabled && settings.apiKey ? <Badge tone="ok">aktiv</Badge> : <Badge>aus</Badge>}
+        action={settings.enabled && settings.apiKey ? <Badge tone="ok">on</Badge> : <Badge>off</Badge>}
       >
-        KI-Funktionen
+        AI features
       </SectionTitle>
       <Card className="p-4">
         <p className="text-[0.8125rem] leading-relaxed text-txt-2">
-          Foto- und Diktat-Erkennung brauchen einen eigenen Anthropic-API-Key. Die App hat keinen
-          Server: dein Key bleibt auf diesem Gerät und geht nur direkt an Anthropic. Suche,
-          Barcode-Scan und manuelles Protokollieren funktionieren auch ohne.
+          Photo and dictation logging need your own Anthropic API key. This app has no server:
+          your key stays on this device and goes only to Anthropic. Search, barcode scanning and
+          manual logging all work without one.
         </p>
 
-        <Field label="Anthropic API-Key" className="mt-3.5">
+        <Field label="Anthropic API key" className="mt-3.5">
           <Input
             type="password"
             autoComplete="off"
@@ -335,11 +335,11 @@ function AiCard({ settings }: { settings: Awaited<ReturnType<typeof getSettings>
             disabled={!key.trim()}
             onClick={() => void save()}
           >
-            <Sparkles size={16} /> Prüfen & speichern
+            <Sparkles size={16} /> Check & save
           </Button>
           {settings.apiKey && (
             <Button variant="danger" onClick={() => void clear()}>
-              Entfernen
+              Remove
             </Button>
           )}
         </div>
@@ -356,10 +356,10 @@ function AiCard({ settings }: { settings: Awaited<ReturnType<typeof getSettings>
 
         <div className="mt-3.5 space-y-1.5 border-t border-line pt-3 text-[0.6875rem] leading-relaxed text-txt-3">
           <p>
-            Key erstellen unter console.anthropic.com → API Keys. Setze dort ein Ausgabenlimit —
-            jeder mit Zugriff auf dein entsperrtes Handy könnte den Key sonst auslesen.
+            Create a key at console.anthropic.com → API Keys, and set a spend limit on it —
+            anyone with access to your unlocked phone could otherwise read it out.
           </p>
-          <p>Kosten: etwa 1–2 Cent pro Foto, unter 0,1 Cent pro Diktat.</p>
+          <p>Cost: roughly 1–2 cents per photo, under 0.1 cents per dictation.</p>
         </div>
       </Card>
     </>
@@ -416,39 +416,38 @@ function DataCard({ storage }: { storage: { usage: number; quota: number } | nul
   }
 
   const wipe = async () => {
-    if (!confirm('Wirklich alle Daten löschen? Das kann nicht rückgängig gemacht werden.')) return
+    if (!confirm('Delete all data? This cannot be undone.')) return
     await db.delete()
     location.reload()
   }
 
   return (
     <>
-      <SectionTitle>Daten</SectionTitle>
+      <SectionTitle>Data</SectionTitle>
       <Card className="p-4">
         {storage && (
           <p className="mb-3 text-[0.8125rem] text-txt-2">
-            {bytes(storage.usage)} belegt
-            {storage.quota > 0 && ` von ${bytes(storage.quota)} verfügbar`}
+            {bytes(storage.usage)} used
+            {storage.quota > 0 && ` of ${bytes(storage.quota)} available`}
           </p>
         )}
         <div className="flex gap-2">
           <Button className="flex-1" loading={busy} onClick={() => void exportAll()}>
-            <Download size={16} /> Alles exportieren
+            <Download size={16} /> Export everything
           </Button>
           <Button variant="danger" onClick={() => void wipe()}>
             <Trash2 size={16} />
           </Button>
         </div>
         <p className="mt-3 text-[0.6875rem] leading-relaxed text-txt-3">
-          Alles liegt ausschließlich auf diesem Gerät — es gibt kein Konto und keinen Server.
-          Der Export ist deine einzige Sicherung, also mach ihn regelmäßig. Der API-Key wird aus
-          dem Export bewusst herausgelassen.
+          Everything lives on this device alone — there is no account and no server. This export
+          is your only backup, so take one regularly. The API key is deliberately left out of it.
         </p>
       </Card>
 
       <p className="mt-6 px-1 text-center text-[0.6875rem] leading-relaxed text-txt-4">
-        Nährwertdaten von Open Food Facts (ODbL) und aus Standard-Nährwerttabellen.
-        Schätzungen sind Schätzungen — kein medizinischer Rat.
+        Nutrition data from Open Food Facts (ODbL) and standard composition tables.
+        Estimates are estimates — not medical advice.
       </p>
     </>
   )

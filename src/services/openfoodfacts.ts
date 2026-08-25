@@ -124,7 +124,7 @@ async function get(url: string, limiter: RateLimiter, signal?: AbortSignal): Pro
       res = await fetch(url, { signal, headers: { Accept: 'application/json' } })
     } catch (e) {
       if ((e as Error).name === 'AbortError') throw e
-      lastError = new OffError('Keine Verbindung zu Open Food Facts', 'network')
+      lastError = new OffError('Cannot reach Open Food Facts', 'network')
       continue
     }
 
@@ -132,24 +132,24 @@ async function get(url: string, limiter: RateLimiter, signal?: AbortSignal): Pro
       try {
         return await res.json()
       } catch {
-        lastError = new OffError('Unlesbare Antwort von Open Food Facts', 'bad-data')
+        lastError = new OffError('Unreadable response from Open Food Facts', 'bad-data')
         continue
       }
     }
 
     if (res.status === 429) {
-      lastError = new OffError('Zu viele Anfragen — kurz warten', 'ratelimit')
+      lastError = new OffError('Too many requests — wait a moment', 'ratelimit')
       continue
     }
     // 5xx is the load shedder and is worth retrying; 4xx is not.
     if (res.status >= 500) {
-      lastError = new OffError(`Open Food Facts überlastet (${res.status})`, 'network')
+      lastError = new OffError(`Open Food Facts is overloaded (${res.status})`, 'network')
       continue
     }
-    throw new OffError(`Open Food Facts antwortete mit ${res.status}`, 'network')
+    throw new OffError(`Open Food Facts responded with ${res.status}`, 'network')
   }
 
-  throw lastError ?? new OffError('Open Food Facts nicht erreichbar', 'network')
+  throw lastError ?? new OffError('Open Food Facts unavailable', 'network')
 }
 
 /* ------------------------------------------------------------------ *
@@ -186,7 +186,7 @@ export function normalise(p: any): NormalisedProduct | null {
     const kj = num(nut['energy-kj_100g']) ?? num(nut['energy_100g'])
     if (kj != null) {
       kcal = kjToKcal(kj)
-      warnings.push('Kalorien aus kJ umgerechnet')
+      warnings.push('calories converted from kJ')
     }
   }
 
@@ -227,17 +227,17 @@ export function normalise(p: any): NormalisedProduct | null {
   if (per100.kcal > 900) return null // nothing beats pure fat at 884
   if (per100.protein < 0 || per100.carbs < 0 || per100.fat < 0) return null
   if (per100.fiber != null && per100.fiber > per100.carbs + 5) {
-    warnings.push('Ballaststoffe höher als Kohlenhydrate — Angabe prüfen')
+    warnings.push('fibre exceeds carbohydrate — check the label')
   }
   if (per100.satFat != null && per100.satFat > per100.fat + 0.5) {
-    warnings.push('Gesättigte Fette höher als Gesamtfett — Angabe prüfen')
+    warnings.push('saturated fat exceeds total fat — check the label')
   }
 
   if (per100.kcal === 0 && macroSum > 1) {
     // One shared implementation of the LMIV Annex XIV factors; a local copy
     // here would silently drift from the rest of the app.
     per100.kcal = kcalFromMacros(per100)
-    warnings.push('Kalorien fehlten — aus Makros berechnet')
+    warnings.push('calories were missing — derived from macros')
   }
 
   const energy = checkEnergy(per100)
@@ -247,19 +247,19 @@ export function normalise(p: any): NormalisedProduct | null {
   const servings: ServingSize[] = []
   const servingQty = num(p.serving_quantity)
   if (servingQty && servingQty > 0 && servingQty < 2000) {
-    servings.push({ label: `1 Portion (${Math.round(servingQty)} g)`, amount: servingQty, isDefault: true })
+    servings.push({ label: `1 serving (${Math.round(servingQty)} g)`, amount: servingQty, isDefault: true })
   } else if (typeof p.serving_size === 'string') {
     const m = p.serving_size.match(/([\d.,]+)\s*(g|ml)/i)
     const v = m ? num(m[1]) : undefined
     if (v && v > 0 && v < 2000) {
-      servings.push({ label: `1 Portion (${Math.round(v)} ${m![2].toLowerCase()})`, amount: v, isDefault: true })
+      servings.push({ label: `1 serving (${Math.round(v)} ${m![2].toLowerCase()})`, amount: v, isDefault: true })
     }
   }
   // Whole-package portion, when the net quantity is a clean number.
   const pack = typeof p.quantity === 'string' ? p.quantity.match(/([\d.,]+)\s*(g|ml)/i) : null
   const packQty = pack ? num(pack[1]) : undefined
   if (packQty && packQty > 0 && packQty <= 5000) {
-    servings.push({ label: `Ganze Packung (${Math.round(packQty)} ${pack![2].toLowerCase()})`, amount: packQty })
+    servings.push({ label: `Whole pack (${Math.round(packQty)} ${pack![2].toLowerCase()})`, amount: packQty })
   }
   const isDrink = /ml|l$/i.test(p.quantity ?? '') || /getränk|drink|saft|wasser|cola/i.test(p.product_name ?? '')
   servings.push({ label: isDrink ? '100 ml' : '100 g', amount: 100, isDefault: servings.length === 0 })
@@ -344,7 +344,7 @@ const APP_TAG = 'app_name=MacroForge&app_version=0.1&app_uuid=web'
 
 export async function lookupBarcode(barcode: string, signal?: AbortSignal): Promise<NormalisedProduct | null> {
   const clean = barcode.replace(/\D/g, '')
-  if (clean.length < 8) throw new OffError('Ungültiger Barcode', 'bad-data')
+  if (clean.length < 8) throw new OffError('Invalid barcode', 'bad-data')
 
   const url = `${HOST}/api/v2/product/${clean}.json?fields=${FIELDS}&lc=de&${APP_TAG}`
   const json = await get(url, productLimiter, signal)

@@ -33,7 +33,7 @@ export default function Trends() {
 
   if (!data) {
     return (
-      <Screen title="Verlauf">
+      <Screen title="Trends">
         <div className="mt-4 space-y-3">
           <div className="skeleton h-48 rounded-card" />
           <div className="skeleton h-32 rounded-card" />
@@ -45,14 +45,14 @@ export default function Trends() {
   const { weights, intake, trend, expenditure } = data
 
   return (
-    <Screen title="Verlauf">
-      <SectionTitle>Gewicht</SectionTitle>
+    <Screen title="Trends">
+      <SectionTitle>Weight</SectionTitle>
       {trend.length < 2 ? (
         <Card>
           <EmptyState
             icon={<TrendingUp size={28} />}
-            title="Noch zu wenig Daten"
-            body="Ab zwei Wiegungen erscheint hier dein geglätteter Trend. Ab etwa drei Wochen wird dein tatsächlicher Verbrauch berechenbar."
+            title="Not enough data yet"
+            body="Two weigh-ins gives you a smoothed trend. About three weeks makes your real expenditure calculable."
           />
         </Card>
       ) : (
@@ -62,36 +62,38 @@ export default function Trends() {
             trend={trend.map((t) => ({ date: t.date, value: t.trendKg }))}
           />
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3.5">
-            <Stat label="Aktuell" value={`${fmtKg(weights[weights.length - 1].kg)} kg`} />
+            <Stat label="Current" value={`${fmtKg(weights[weights.length - 1].kg)} kg`} />
             <Stat label="Trend" value={`${fmtKg(trend[trend.length - 1].trendKg)} kg`} />
             <Stat
-              label="pro Woche"
+              label="per week"
               value={`${signed(expenditure.slopeKgPerWeek, 'de', 2)} kg`}
             />
           </div>
         </Card>
       )}
 
-      <SectionTitle>Verbrauch</SectionTitle>
+      <SectionTitle>Expenditure</SectionTitle>
       <Card className="p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <div className="text-[1.75rem] font-bold leading-none">{fmtKcal(expenditure.tdee)}</div>
-            <div className="mt-1.5 text-xs text-txt-2">kcal pro Tag</div>
+            <div className="numeric text-[2rem] font-extrabold leading-none">
+              {fmtKcal(expenditure.tdee)}
+            </div>
+            <div className="mt-1.5 text-xs font-semibold text-txt-2">kcal per day</div>
           </div>
           <Badge tone={expenditure.confidence === 'high' ? 'ok' : expenditure.confidence === 'medium' ? 'warn' : 'neutral'}>
             {expenditure.confidence === 'high'
-              ? 'gemessen'
+              ? 'measured'
               : expenditure.confidence === 'medium'
-                ? 'teilweise gemessen'
-                : 'geschätzt'}
+                ? 'part measured'
+                : 'estimated'}
           </Badge>
         </div>
 
         {/* How much of the number is real data vs. a population formula. */}
         <div className="mt-4">
           <div className="mb-1.5 flex justify-between text-[0.6875rem] text-txt-3">
-            <span>Anteil echter Messdaten</span>
+            <span>Share from real measurements</span>
             <span>{Math.round(expenditure.dataWeight * 100)} %</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-track">
@@ -103,16 +105,16 @@ export default function Trends() {
         </div>
 
         <p className="mt-3 text-[0.6875rem] leading-relaxed text-txt-3">
-          {expenditure.note}. Berechnet aus deiner durchschnittlichen Zufuhr
-          {expenditure.meanIntake > 0 && ` (${fmtKcal(expenditure.meanIntake)} kcal)`} und der
-          tatsächlichen Gewichtsveränderung — nicht aus einer Formel für einen Durchschnittsmenschen.
+          {expenditure.note}. Derived from your average intake
+          {expenditure.meanIntake > 0 && ` (${fmtKcal(expenditure.meanIntake)} kcal)`} and how your
+          weight actually moved — not from a formula for an average person.
         </p>
       </Card>
 
-      <SectionTitle>Zufuhr, letzte 14 Tage</SectionTitle>
+      <SectionTitle>Intake, last 14 days</SectionTitle>
       {intake.length === 0 ? (
         <Card>
-          <EmptyState title="Noch nichts protokolliert" />
+          <EmptyState title="Nothing logged yet" />
         </Card>
       ) : (
         <Card className="p-4">
@@ -126,8 +128,8 @@ export default function Trends() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[0.9375rem] font-semibold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-[0.6875rem] text-txt-3">{label}</div>
+      <div className="numeric text-[1.0625rem] font-extrabold">{value}</div>
+      <div className="label-micro mt-1 text-[0.5625rem] text-txt-3">{label}</div>
     </div>
   )
 }
@@ -188,15 +190,15 @@ function WeightChart({
       min: lo,
       max: hi,
       labels: [
-        { x: PAD.l, text: new Date(first).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' }) },
-        { x: W - PAD.r, text: 'heute' },
+        { x: PAD.l, text: new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) },
+        { x: W - PAD.r, text: 'today' },
       ],
     }
   }, [raw, trend])
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Gewichtsverlauf">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Weight over time">
         <path d={rawPath} fill="none" stroke="var(--color-raw)" strokeWidth={1.25} strokeLinecap="round" opacity={0.85} />
         <path d={trendPath} fill="none" stroke="var(--color-trend)" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" />
         {labels.map((l, i) => (
@@ -218,7 +220,7 @@ function WeightChart({
             <span className="h-0.5 w-4 rounded bg-trend" /> Trend
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded bg-raw" /> Waage
+            <span className="h-0.5 w-4 rounded bg-raw" /> Scale
           </span>
         </span>
         <span className="tabular-nums">
@@ -265,9 +267,9 @@ function IntakeBars({ intake, target }: { intake: Array<{ date: DateKey; kcal: n
       </div>
       <div className="mt-3 flex justify-between border-t border-line pt-3 text-[0.6875rem] text-txt-3">
         <span>
-          Ø {fmtKcal(avg)} kcal an {logged.length} protokollierten Tagen
+          Avg {fmtKcal(avg)} kcal over {logged.length} logged days
         </span>
-        <span className="tabular-nums">Ziel {num(Math.round(target))}</span>
+        <span className="tabular-nums">Target {num(Math.round(target))}</span>
       </div>
     </div>
   )

@@ -42,13 +42,13 @@ export default function Scan() {
       }
       const product = await lookupBarcode(code)
       if (!product) {
-        setError(`Barcode ${code} ist nicht in der Datenbank. Du kannst das Produkt selbst anlegen.`)
+        setError(`Barcode ${code} is not in the database. You can add the product yourself.`)
         return
       }
       await upsertFood(product.food)
       setFound(product.food)
     } catch (e) {
-      setError(e instanceof OffError ? e.message : 'Suche fehlgeschlagen')
+      setError(e instanceof OffError ? e.message : 'Lookup failed')
     } finally {
       setBusy(false)
     }
@@ -81,7 +81,7 @@ export default function Scan() {
     } catch {
       setStatus('blocked')
       setError(
-        'Die Kamera konnte nicht gestartet werden. Auf dem iPhone ist das in installierten Web-Apps leider nicht immer zuverlässig — gib den Barcode einfach von Hand ein.',
+        'The camera could not be started. On iPhone this is unreliable inside installed web apps — just type the barcode instead.',
       )
     }
   }, [handleCode])
@@ -90,9 +90,9 @@ export default function Scan() {
 
   return (
     <Screen
-      title="Barcode scannen"
+      title="Scan barcode"
       left={
-        <IconButton label="Zurück" onClick={() => navigate(-1)}>
+        <IconButton label="Back" onClick={() => navigate(-1)}>
           <ChevronLeft size={20} />
         </IconButton>
       }
@@ -117,7 +117,7 @@ export default function Scan() {
                 <Spinner className="size-6 text-txt-2" />
               ) : (
                 <Button variant="primary" onClick={() => void start()}>
-                  <Camera size={17} /> Kamera starten
+                  <Camera size={17} /> Start camera
                 </Button>
               )}
             </div>
@@ -127,7 +127,7 @@ export default function Scan() {
 
       {busy && (
         <div className="mt-4 flex items-center justify-center gap-2 text-[0.8125rem] text-txt-2">
-          <Spinner className="size-4" /> Produkt wird gesucht…
+          <Spinner className="size-4" /> Looking up the product…
         </div>
       )}
 
@@ -139,7 +139,7 @@ export default function Scan() {
 
       <Card className="mt-4 p-4">
         <label className="mb-2 flex items-center gap-2 text-[0.8125rem] font-medium text-txt-2">
-          <Keyboard size={15} /> Barcode von Hand
+          <Keyboard size={15} /> Type the barcode
         </label>
         <div className="flex gap-2">
           <Input
@@ -155,11 +155,11 @@ export default function Scan() {
             disabled={manual.length < 8 || busy}
             onClick={() => void handleCode(manual)}
           >
-            Suchen
+            Look up
           </Button>
         </div>
         <p className="mt-2 text-[0.6875rem] leading-relaxed text-txt-3">
-          Die 13 Ziffern unter dem Strichcode. Deutsche Produkte beginnen meist mit 40–44.
+          The 13 digits under the stripes. German products usually start 40–44.
         </p>
       </Card>
 

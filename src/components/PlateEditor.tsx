@@ -8,9 +8,9 @@ import { plateTotal, type ResolvedItem } from '../services/ai/resolve'
 import { MEAL_SLOTS, type MealSlot } from '../lib/types'
 
 const MEAL_LABELS: Record<MealSlot, string> = {
-  breakfast: 'Frühstück',
-  lunch: 'Mittag',
-  dinner: 'Abend',
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
   snack: 'Snack',
 }
 
@@ -69,7 +69,7 @@ export function PlateEditor({
           // is — halving the error in published testing. Trust it.
           uncertainty: i.food ? Math.min(i.uncertainty, 0.08) : i.uncertainty,
           confidence: i.food ? 'high' : i.confidence,
-          explanation: `${Math.round(grams)} ${i.unit} · von dir korrigiert`,
+          explanation: `${Math.round(grams)} ${i.unit} · corrected by you`,
         }
       }),
     )
@@ -84,19 +84,19 @@ export function PlateEditor({
       <Card className="p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <div className="text-[2rem] font-bold leading-none text-kcal">
+            <div className="text-display numeric text-[2.25rem] leading-none text-kcal">
               {fmtKcal(total.nutrients.kcal)}
             </div>
-            <div className="mt-1.5 text-xs text-txt-2">
-              kcal · Bereich {fmtKcal(total.kcalLow)}–{fmtKcal(total.kcalHigh)}
+            <div className="mt-1.5 text-xs font-semibold text-txt-2">
+              kcal · range {fmtKcal(total.kcalLow)}–{fmtKcal(total.kcalHigh)}
             </div>
           </div>
           <MacroChips n={total.nutrients} />
         </div>
         {/* Never present an estimate as a single exact figure. */}
         <p className="mt-3 border-t border-line pt-3 text-[0.6875rem] leading-relaxed text-txt-3">
-          Schätzung, keine Messung. Je genauer du Portionen korrigierst, desto kleiner wird der
-          Bereich — ein eingetragenes Gewicht halbiert den Fehler.
+          An estimate, not a measurement. Correcting a portion narrows the range — entering a
+          weighed amount roughly halves the error.
         </p>
       </Card>
 
@@ -104,8 +104,8 @@ export function PlateEditor({
         <div className="mt-3 flex items-start gap-2.5 rounded-tile border border-warn/25 bg-warn/8 px-3.5 py-3">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warn" />
           <p className="text-[0.8125rem] leading-relaxed text-txt-2">
-            {flagged === 1 ? 'Ein Eintrag konnte' : `${flagged} Einträge konnten`} keiner
-            Datenbank sicher zugeordnet werden. Bitte prüfen.
+            {flagged === 1 ? '1 item could' : `${flagged} items could`} not be matched to the
+            database with confidence. Worth a check.
           </p>
         </div>
       )}
@@ -126,10 +126,10 @@ export function PlateEditor({
 
       {questions && questions.length > 0 && (
         <Card className="mt-4 p-4">
-          <p className="text-[0.8125rem] font-medium">Kurz nachgefragt</p>
+          <p className="text-[0.8125rem] font-medium">A couple of questions</p>
           <p className="mt-1 text-[0.6875rem] leading-relaxed text-txt-3">
-            Öl, Butter und Zucker sind auf einem Foto meist unsichtbar und machen den größten
-            Teil des Fehlers aus. Diese Antworten verbessern die Schätzung spürbar.
+            Oil, butter and sugar are usually invisible in a photo and account for most of the
+            error. Answering these measurably improves the estimate.
           </p>
           <div className="mt-3 space-y-3">
             {questions.slice(0, 3).map((q, i) => (
@@ -166,7 +166,7 @@ export function PlateEditor({
                 )
               }
             >
-              Neu berechnen
+              Recalculate
             </Button>
           )}
         </Card>
@@ -174,7 +174,7 @@ export function PlateEditor({
 
       <div className="mt-5 flex gap-2">
         <Button className="flex-1" onClick={onCancel}>
-          Verwerfen
+          Discard
         </Button>
         <Button
           variant="primary"
@@ -184,7 +184,7 @@ export function PlateEditor({
           onClick={() => onCommit(items)}
         >
           <Check size={17} />
-          {items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'} speichern
+          Save {items.length} {items.length === 1 ? 'item' : 'items'}
         </Button>
       </div>
     </div>
@@ -217,23 +217,23 @@ function PlateRow({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[0.9375rem] leading-snug">
-            {item.food?.nameDe ?? item.food?.name ?? item.raw.name}
+          <p className="text-[0.9375rem] font-bold leading-snug tracking-[-0.015em]">
+            {item.food?.name ?? item.food?.nameDe ?? item.raw.name}
             {item.assumed && (
               <Badge tone="warn" className="ml-1.5">
-                <EyeOff size={10} /> vermutet
+                <EyeOff size={10} /> assumed
               </Badge>
             )}
             {!item.assumed && item.matchQuality === 'exact' && (
               <Badge tone="ok" className="ml-1.5">
-                <Eye size={10} /> erkannt
+                <Eye size={10} /> matched
               </Badge>
             )}
           </p>
           <p className="mt-1 text-[0.6875rem] leading-relaxed text-txt-3">{item.explanation}</p>
         </div>
         <div className="shrink-0 text-right">
-          <div className="text-[0.9375rem] font-medium tabular-nums">
+          <div className="numeric text-[0.9375rem] font-extrabold">
             {fmtKcal(item.nutrients.kcal)}
           </div>
           <div className="text-[0.6875rem] text-txt-3">
@@ -274,7 +274,7 @@ function PlateRow({
         </div>
         <button
           onClick={() => onRemove(item.id)}
-          aria-label={`${item.raw.name} entfernen`}
+          aria-label={`Remove ${item.raw.name}`}
           className="grid size-8 place-items-center rounded-lg text-txt-4 active:bg-surface-2"
         >
           <Trash2 size={14} />

@@ -201,7 +201,7 @@ export async function addEntry(draft: DraftEntry): Promise<LogEntry> {
     date: draft.date,
     meal: draft.meal,
     foodId: draft.food?.id,
-    name: draft.name ?? draft.food?.nameDe ?? draft.food?.name ?? 'Unbenannt',
+    name: draft.name ?? draft.food?.name ?? draft.food?.nameDe ?? 'Unnamed',
     brand: draft.brand ?? draft.food?.brand,
     amount: draft.amount,
     unit: draft.unit,
@@ -352,7 +352,7 @@ export async function saveWeight(date: DateKey, kg: number, bodyFatPct?: number)
  * ------------------------------------------------------------------ */
 
 function score(food: Food, q: string): number {
-  const name = `${food.nameDe ?? food.name} ${food.brand ?? ''}`.toLowerCase()
+  const name = `${food.name || food.nameDe} ${food.brand ?? ''}`.toLowerCase()
   if (!name.includes(q)) return -1
   let s = 0
   if (name.startsWith(q)) s += 40

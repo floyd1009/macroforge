@@ -1,5 +1,18 @@
 @import 'tailwindcss';
 
+/* Self-hosted so the app keeps its typography offline and makes no request to
+   a third party. One variable file, 35 kB, covers 400–800. */
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-latin.woff2') format('woff2-variations');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* ------------------------------------------------------------------ *
  * MacroForge design tokens — "ember on charcoal".
  * Near-black backgrounds carry a slight red bias so the crimson accent
@@ -58,11 +71,16 @@
   --color-raw: #5f4fa8;
   --color-tick: #ffffff;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
+  /* Archivo: a grotesque with squared terminals and flat-sided bowls. Chosen
+     against the system stack because SF Pro's round, open shapes read as soft
+     at the sizes this app uses most — big numbers and small dense labels. */
+  --font-sans: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     system-ui, Roboto, sans-serif;
 
-  --radius-card: 1rem;
-  --radius-tile: 0.875rem;
+  /* Tighter than the usual 16/14. Softer corners at this scale read generic;
+     these keep edges legible against the near-black ground. */
+  --radius-card: 0.75rem;
+  --radius-tile: 0.625rem;
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -92,12 +110,36 @@
     background-color: var(--color-bg);
     color: var(--color-txt);
     font-family: var(--font-sans);
+    /* 500 as the floor, not 400: at 13–15 px on black, regular weight goes
+       thin and washed out rather than quiet. */
+    font-weight: 500;
+    letter-spacing: -0.006em;
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     /* Kill the rubber-band white flash and double-tap zoom on iOS. */
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+  }
+
+  /* Headings carry real weight and negative tracking so they read as set,
+     not as default-styled text. */
+  h1, h2, h3 {
+    font-weight: 700;
+    letter-spacing: -0.021em;
+    margin: 0;
+  }
+
+  /* Optical sizing: large text needs tighter tracking than small text to look
+     evenly spaced. Applied by size, the way it would be set by hand. */
+  .text-display {
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    font-feature-settings: 'tnum' 1, 'ss01' 1;
+  }
+
+  strong, b {
+    font-weight: 700;
   }
 
   /* iOS zooms the viewport when a focused input is under 16px. Never allow it. */
@@ -161,6 +203,23 @@
 /* A hairline that survives retina rounding better than border-width: 1px. */
 @utility hairline-t {
   border-top: 1px solid var(--color-line);
+}
+
+/* Small uppercase section markers: heavy and widely tracked, so they read as
+   deliberate labelling rather than shrunken body text. */
+@utility label-micro {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* Big readouts. Tabular figures are non-negotiable — a calorie total that
+   shifts sideways as it counts up looks broken. */
+@utility numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.02em;
 }
 
 @keyframes mf-fade-up {

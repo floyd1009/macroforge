@@ -33,13 +33,13 @@ export async function prepareImage(file: Blob, longEdge = TARGET_LONG_EDGE): Pro
     canvas.width = w
     canvas.height = h
     const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Canvas nicht verfügbar')
+    if (!ctx) throw new Error('Canvas unavailable')
     ctx.drawImage(bitmap, 0, 0, w, h)
 
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY),
     )
-    if (!blob) throw new Error('Bild konnte nicht kodiert werden')
+    if (!blob) throw new Error('Could not encode the image')
 
     return {
       base64: await blobToBase64(blob),
@@ -61,7 +61,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
       // Strip the "data:image/jpeg;base64," prefix the API does not want.
       resolve(result.slice(result.indexOf(',') + 1))
     }
-    reader.onerror = () => reject(new Error('Bild konnte nicht gelesen werden'))
+    reader.onerror = () => reject(new Error('Could not read the image'))
     reader.readAsDataURL(blob)
   })
 }
@@ -124,11 +124,11 @@ export async function assessQuality(file: Blob): Promise<ImageQuality> {
     const sharpness = lapSq / n - mean * mean
 
     if (brightness < 0.08)
-      return { ok: false, brightness, sharpness, reason: 'Das Foto ist sehr dunkel — bitte mit mehr Licht wiederholen.' }
+      return { ok: false, brightness, sharpness, reason: 'The photo is very dark — try again with more light.' }
     if (brightness > 0.96)
-      return { ok: false, brightness, sharpness, reason: 'Das Foto ist überbelichtet.' }
+      return { ok: false, brightness, sharpness, reason: 'The photo is overexposed.' }
     if (sharpness < 0.00035)
-      return { ok: false, brightness, sharpness, reason: 'Das Foto ist unscharf — bitte noch einmal versuchen.' }
+      return { ok: false, brightness, sharpness, reason: 'The photo is out of focus — please try again.' }
 
     return { ok: true, brightness, sharpness }
   } finally {
