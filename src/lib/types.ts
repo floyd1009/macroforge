@@ -84,9 +84,10 @@ export interface ServingSize {
 export type FoodState = 'raw' | 'cooked' | 'as_sold'
 
 export type FoodSource =
-  | 'off' // Open Food Facts
+  | 'off' // Open Food Facts — packaged retail products
+  | 'bls' // Bundeslebensmittelschlüssel 4.0 — the German national database
   | 'usda' // USDA FoodData Central
-  | 'seed' // bundled German staples
+  | 'seed' // bundled everyday staples
   | 'custom' // user-created
   | 'ai' // created by a photo/voice estimate
 

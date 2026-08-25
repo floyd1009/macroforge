@@ -11,6 +11,7 @@ import {
 } from './nutrition'
 import type {
   Confidence,
+  FoodSource,
   Provenance,
   EntryMethod,
   Food,
@@ -317,9 +318,11 @@ export async function upsertFood(food: Food): Promise<Food> {
       updatedAt: Date.now(),
     }
     await db.foods.put(merged)
+    invalidateFoodIndex()
     return merged
   }
   await db.foods.put(food)
+  invalidateFoodIndex()
   return food
 }
 
@@ -351,39 +354,117 @@ export async function saveWeight(date: DateKey, kg: number, bodyFatPct?: number)
  * Search over the local food cache
  * ------------------------------------------------------------------ */
 
-function score(food: Food, q: string): number {
-  const name = `${food.name || food.nameDe} ${food.brand ?? ''}`.toLowerCase()
-  if (!name.includes(q)) return -1
+/* ------------------------------------------------------------------ *
+ * Local search
+ *
+ * With BLS loaded there are 7,000+ foods in the table, so re-reading them on
+ * every keystroke is not viable. A compact in-memory index is built once and
+ * reused; it holds only the fields scoring needs, and is invalidated when the
+ * table's row count changes.
+ * ------------------------------------------------------------------ */
+
+interface IndexEntry {
+  id: string
+  /** Lowercased "name brand nameDe", pre-joined for substring matching. */
+  hay: string
+  /** Lowercased primary name, for prefix scoring. */
+  name: string
+  source: FoodSource
+  verified: boolean
+  favorite: boolean
+  useCount: number
+  lastUsedAt: number
+}
+
+let searchIndex: IndexEntry[] | null = null
+let indexedCount = -1
+
+/** Drop the cached index; call after any write that adds or removes foods. */
+export function invalidateFoodIndex(): void {
+  searchIndex = null
+  indexedCount = -1
+}
+
+async function getIndex(): Promise<IndexEntry[]> {
+  const count = await db.foods.count()
+  if (searchIndex && indexedCount === count) return searchIndex
+
+  const all = await db.foods.toArray()
+  searchIndex = all
+    .filter((f) => !f.deleted)
+    .map((f) => ({
+      id: f.id,
+      hay: `${f.name} ${f.nameDe ?? ''} ${f.brand ?? ''}`.toLowerCase(),
+      name: (f.name || f.nameDe || '').toLowerCase(),
+      source: f.source,
+      verified: f.verified,
+      favorite: f.favorite ?? false,
+      useCount: f.useCount ?? 0,
+      lastUsedAt: f.lastUsedAt ?? 0,
+    }))
+  indexedCount = count
+  return searchIndex
+}
+
+function scoreEntry(e: IndexEntry, q: string, tokens: string[]): number {
+  // Every query token must appear somewhere, so "chicken raw" cannot match a
+  // food that is only "chicken".
+  for (const t of tokens) if (!e.hay.includes(t)) return -1
+
   let s = 0
-  if (name.startsWith(q)) s += 40
-  const wordStart = new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(name)
-  if (wordStart) s += 20
-  if (food.favorite) s += 30
-  if (food.verified) s += 8
-  s += Math.min(25, (food.useCount ?? 0) * 3)
-  // Recency bonus, decaying over a month.
-  if (food.lastUsedAt) {
-    const ageDays = (Date.now() - food.lastUsedAt) / 86_400_000
-    s += Math.max(0, 15 - ageDays / 2)
+  if (e.name === q) s += 120
+  else if (e.name.startsWith(q)) s += 60
+  else if (e.hay.includes(q)) s += 25
+
+  // Word-boundary hits beat mid-word ones: "oat" should rank "Oat flakes"
+  // above "Groats".
+  for (const t of tokens) {
+    if (new RegExp(`\\b${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(e.hay)) s += 12
   }
+
+  // A shorter name containing the query is usually the more generic, more
+  // likely-intended food: "Rice" over "Rice pudding with cinnamon".
+  s += Math.max(0, 22 - e.name.length / 3)
+
+  if (e.favorite) s += 40
+  s += Math.min(30, e.useCount * 4)
+  if (e.lastUsedAt) {
+    const ageDays = (Date.now() - e.lastUsedAt) / 86_400_000
+    s += Math.max(0, 18 - ageDays / 2)
+  }
+
+  // Source priority: things the user made or ate before, then the national
+  // composition database, then crowdsourced retail data.
+  if (e.source === 'custom') s += 14
+  else if (e.source === 'seed') s += 10
+  else if (e.source === 'bls') s += 8
+  if (e.verified) s += 5
+
   return s
 }
 
 export async function searchLocalFoods(query: string, limit = 30): Promise<Food[]> {
   const q = query.trim().toLowerCase()
-  const all = await db.foods.toArray()
-  const live = all.filter((f) => !f.deleted)
+
   if (!q) {
-    return live
-      .sort((a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0) || (b.useCount ?? 0) - (a.useCount ?? 0))
-      .slice(0, limit)
+    // No query: the most recently used foods, which is what people re-log.
+    const recent = await db.foods.orderBy('lastUsedAt').reverse().limit(limit * 2).toArray()
+    return recent.filter((f) => !f.deleted && f.lastUsedAt).slice(0, limit)
   }
-  return live
-    .map((f) => ({ f, s: score(f, q) }))
-    .filter((x) => x.s >= 0)
-    .sort((a, b) => b.s - a.s)
-    .slice(0, limit)
-    .map((x) => x.f)
+
+  const index = await getIndex()
+  const tokens = q.split(/\s+/).filter(Boolean)
+
+  const scored: Array<{ id: string; s: number }> = []
+  for (const e of index) {
+    const s = scoreEntry(e, q, tokens)
+    if (s >= 0) scored.push({ id: e.id, s })
+  }
+  scored.sort((a, b) => b.s - a.s)
+
+  const top = scored.slice(0, limit)
+  const foods = await db.foods.bulkGet(top.map((t) => t.id))
+  return foods.filter((f): f is Food => f != null)
 }
 
 export async function findByBarcode(barcode: string): Promise<Food | undefined> {

@@ -4,6 +4,7 @@ import { TabBar } from './components/TabBar'
 import { Spinner } from './components/ui'
 import { requestPersistence } from './lib/db'
 import { seedIfEmpty } from './data/seed'
+import { importBls } from './data/bls'
 
 const Today = lazy(() => import('./screens/Today'))
 const AddFood = lazy(() => import('./screens/AddFood'))
@@ -24,9 +25,26 @@ function Loading() {
 
 export default function App() {
   useEffect(() => {
-    // Ask iOS not to evict the database, and load German staples on first run.
+    // Ask iOS not to evict the database, and load the staples immediately so
+    // the app is usable on first paint.
     void requestPersistence()
-    void seedIfEmpty()
+    void seedIfEmpty().then(() => {
+      // The national database is ~300 kB and 7,140 rows. Import it after the
+      // app is interactive, and when the browser says it has spare time, so a
+      // first launch never stalls behind it.
+      const start = () =>
+        void importBls().catch((e) => {
+          // Not fatal — the app works on staples plus Open Food Facts, and
+          // Settings offers a manual retry. But it must not fail silently.
+          console.warn('BLS import failed:', e)
+        })
+      if ('requestIdleCallback' in window) {
+        ;(window as unknown as { requestIdleCallback: (cb: () => void, o?: object) => void })
+          .requestIdleCallback(start, { timeout: 4000 })
+      } else {
+        setTimeout(start, 1500)
+      }
+    })
   }, [])
 
   return (

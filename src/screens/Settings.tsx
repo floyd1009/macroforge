@@ -9,16 +9,19 @@ import { todayKey } from '../lib/date'
 import type { ActivityLevel, GoalDirection, Profile, Sex } from '../lib/types'
 import { AiError, testKey } from '../services/ai/client'
 import { isStandalone } from '../services/ai/voice'
+import { BLS_CITATION, blsCount, importBls } from '../data/bls'
 
 export default function SettingsScreen() {
   const data = useLiveQuery(async () => {
-    const [profile, settings, plan, storage] = await Promise.all([
+    const [profile, settings, plan, storage, foods, bls] = await Promise.all([
       getProfile(),
       getSettings(),
       buildDayPlan(todayKey()),
       estimateStorage(),
+      db.foods.count(),
+      blsCount(),
     ])
-    return { profile, settings, plan, storage }
+    return { profile, settings, plan, storage, foods, bls }
   }, [])
 
   if (!data) {
@@ -35,6 +38,7 @@ export default function SettingsScreen() {
       <ProfileCard profile={data.profile} />
       <TargetsCard plan={data.plan} />
       <AiCard settings={data.settings.ai} />
+      <FoodDataCard total={data.foods} bls={data.bls} />
       <DataCard storage={data.storage} />
     </Screen>
   )
@@ -366,6 +370,51 @@ function AiCard({ settings }: { settings: Awaited<ReturnType<typeof getSettings>
   )
 }
 
+function FoodDataCard({ total, bls }: { total: number; bls: number }) {
+  const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
+  const loaded = bls > 7000
+
+  return (
+    <>
+      <SectionTitle action={loaded ? <Badge tone="ok">offline</Badge> : <Badge tone="warn">not loaded</Badge>}>
+        Food database
+      </SectionTitle>
+      <Card className="p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[0.8125rem] font-semibold text-txt-2">Foods on this device</span>
+          <span className="numeric text-[0.9375rem] font-extrabold">{num(total)}</span>
+        </div>
+
+        {!loaded && (
+          <Button
+            className="mt-3 w-full"
+            loading={busy}
+            onClick={() => {
+              setBusy(true)
+              void importBls((d, t) => setProgress(d / t))
+                .finally(() => {
+                  setBusy(false)
+                  setProgress(null)
+                })
+            }}
+          >
+            {progress != null ? `Loading… ${Math.round(progress * 100)}%` : 'Load German food database'}
+          </Button>
+        )}
+
+        <p className="mt-3 border-t border-line pt-3 text-[0.6875rem] leading-relaxed text-txt-3">
+          Generic foods come from the Bundeslebensmittelschlüssel — the German national nutrition
+          database — and packaged products from Open Food Facts. BLS reports available carbohydrate
+          with fibre listed separately, which is the convention this app uses throughout, so no
+          conversion is applied and nothing is double-counted.
+        </p>
+        <p className="mt-2 text-[0.625rem] leading-relaxed text-txt-4">{BLS_CITATION}</p>
+      </Card>
+    </>
+  )
+}
+
 function DataCard({ storage }: { storage: { usage: number; quota: number } | null }) {
   const [busy, setBusy] = useState(false)
 
@@ -446,8 +495,8 @@ function DataCard({ storage }: { storage: { usage: number; quota: number } | nul
       </Card>
 
       <p className="mt-6 px-1 text-center text-[0.6875rem] leading-relaxed text-txt-4">
-        Nutrition data from Open Food Facts (ODbL) and standard composition tables.
-        Estimates are estimates — not medical advice.
+        Nutrition data from the Bundeslebensmittelschlüssel 4.0 (Max Rubner-Institut, CC BY 4.0)
+        and Open Food Facts (ODbL). Estimates are estimates — not medical advice.
       </p>
     </>
   )

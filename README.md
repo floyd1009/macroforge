@@ -13,10 +13,14 @@ Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
   the app derives your real energy expenditure from what you logged and how
   your weight actually moved, and tells you how much of that number is data
   versus formula.
-- **German food data** — Open Food Facts covers ALDI, Lidl, REWE, EDEKA, dm,
-  Kaufland, PENNY and Netto private labels, and the app tags which chain a
-  product belongs to. 65 German staples are bundled so it works offline from
-  first launch.
+- **The German national food database, offline.** All 7,140 foods of the
+  Bundeslebensmittelschlüssel 4.0 (Max Rubner-Institut, CC BY 4.0) ship with
+  the app — 300 kB gzipped, imported into IndexedDB on first launch. That
+  covers the generic foods Open Food Facts is worst at, because nobody scans a
+  potato, and it includes raw *and* cooked variants of most whole foods.
+- **German retail products** from Open Food Facts: ALDI, Lidl, REWE, EDEKA, dm,
+  Kaufland, PENNY and Netto private labels, tagged with the chain they belong
+  to. Search is bilingual — "Haferflocken" and "rolled oats" find the same row.
 - **Barcode scanning** with a manual-entry fallback.
 - **Photo logging** — describes what is on the plate and resolves it against
   real composition data, with an honest error band.
@@ -89,7 +93,27 @@ device and goes only to `api.anthropic.com`. Set a spend limit on the key.
 Roughly 1–2 cents per photo, under 0.1 cents per dictation. Search, barcode
 scanning and manual logging work with no key at all.
 
+## Rebuilding the food database
+
+`src/data/bls/bls.json` is generated from the published BLS 4.0 spreadsheet:
+
+```bash
+python3 scripts/build-bls.py path/to/BLS_4_0_Data_2025_EN.xlsx
+```
+
+The 14 MB source file is not committed; download it from the DOI below. The
+script asserts the column layout, so a future BLS release fails loudly rather
+than silently mis-parsing a nutrient column.
+
 ## Licence
 
-MIT for the code. Nutrition data from Open Food Facts is ODbL.
+MIT for the code.
+
+Nutrition data:
+- Bundeslebensmittelschlüssel 4.0 — Max Rubner-Institut (2025), **CC BY 4.0**.
+  DOI [10.25826/Data20251217-134202-0](https://doi.org/10.25826/Data20251217-134202-0).
+  MRI states the data may be used freely, including for app and software
+  development.
+- Open Food Facts — **ODbL**.
+
 Not medical advice.
