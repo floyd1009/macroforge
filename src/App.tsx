@@ -1,0 +1,51 @@
+import { Suspense, lazy, useEffect } from 'react'
+import { HashRouter, Route, Routes } from 'react-router-dom'
+import { TabBar } from './components/TabBar'
+import { Spinner } from './components/ui'
+import { requestPersistence } from './lib/db'
+import { seedIfEmpty } from './data/seed'
+
+const Today = lazy(() => import('./screens/Today'))
+const AddFood = lazy(() => import('./screens/AddFood'))
+const Scan = lazy(() => import('./screens/Scan'))
+const PhotoLog = lazy(() => import('./screens/PhotoLog'))
+const VoiceLog = lazy(() => import('./screens/VoiceLog'))
+const Trends = lazy(() => import('./screens/Trends'))
+const Train = lazy(() => import('./screens/Train'))
+const SettingsScreen = lazy(() => import('./screens/Settings'))
+
+function Loading() {
+  return (
+    <div className="grid min-h-dvh place-items-center text-txt-3">
+      <Spinner className="size-6" />
+    </div>
+  )
+}
+
+export default function App() {
+  useEffect(() => {
+    // Ask iOS not to evict the database, and load German staples on first run.
+    void requestPersistence()
+    void seedIfEmpty()
+  }, [])
+
+  return (
+    // HashRouter, not BrowserRouter: GitHub Pages serves static files with no
+    // SPA rewrite, so a deep link like /trends would 404 on a hard refresh.
+    <HashRouter>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route path="/" element={<Today />} />
+          <Route path="/add" element={<AddFood />} />
+          <Route path="/scan" element={<Scan />} />
+          <Route path="/photo" element={<PhotoLog />} />
+          <Route path="/voice" element={<VoiceLog />} />
+          <Route path="/trends" element={<Trends />} />
+          <Route path="/train" element={<Train />} />
+          <Route path="/settings" element={<SettingsScreen />} />
+        </Routes>
+      </Suspense>
+      <TabBar />
+    </HashRouter>
+  )
+}

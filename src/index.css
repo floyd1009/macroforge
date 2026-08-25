@@ -1,0 +1,219 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ *
+ * MacroForge design tokens — "ember on charcoal".
+ * Near-black backgrounds carry a slight red bias so the crimson accent
+ * reads as part of the surface rather than pasted on top of grey.
+ * ------------------------------------------------------------------ */
+@theme {
+  /* ── Surfaces: true-black OLED ramp ────────────────────────────────
+     Black rather than dark grey is what makes MacroFactor and Beastly
+     read as "dark red" — the crimson has nothing to compete with. */
+  --color-bg: #000000;
+  --color-surface: #141416;
+  --color-surface-2: #1f1f22;
+  --color-surface-3: #2a2a2e;
+  --color-track: #34343a;
+  --color-line: #2e2e33;
+  --color-line-strong: #3c3c43;
+
+  /* ── Brand red — CTA fills and chrome only ─────────────────────────
+     Deliberately kept out of data. Red is simultaneously the brand, the
+     universal error signal and the shame colour in diet apps; letting it
+     into macro bars destroys all three meanings at once. The reference
+     palettes fail WCAG AA here (white on #ED1C24 is 4.38:1), so these
+     values are the accessible neighbours of the same hue. */
+  /* White label on --color-brand is 5.71:1 (AA); black is only 3.68:1. */
+  --color-brand: #c81e2d;
+  --color-brand-bright: #e02636;
+  --color-brand-dim: #9b1520;
+  --color-brand-text: #ff6b6b;
+  --color-brand-wash: #1a0708;
+
+  /* ── Text ── */
+  --color-txt: #ffffff;
+  --color-txt-2: #a8a8b0;
+  /* #909098 is the darkest neutral that still clears 4.5:1 on --color-surface-3,
+     the lightest card we render text on. Anything greyer fails AA. */
+  --color-txt-3: #909098;
+  /* Decorative only — never used for text that has to be read. */
+  --color-txt-4: #6a6a73;
+
+  /* ── Macro hues. All pass AA on --color-surface-2. ── */
+  --color-kcal: #e6e6ea;
+  --color-protein: #6fb3ff;
+  --color-carb: #a78bfa;
+  --color-fat: #f2c14e;
+  --color-fiber: #8a8a93;
+  --color-alcohol: #c9b6ff;
+
+  /* ── Semantic. Errors are text + icon, never a fill, so they never
+     collide with the red CTA. ── */
+  --color-ok: #4cc38a;
+  --color-warn: #ff9f43;
+  --color-bad: #ff6b6b;
+
+  /* ── Charts ── */
+  --color-trend: #c9b6ff;
+  --color-raw: #5f4fa8;
+  --color-tick: #ffffff;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
+    system-ui, Roboto, sans-serif;
+
+  --radius-card: 1rem;
+  --radius-tile: 0.875rem;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* Safe-area shorthands; iOS reports 0 outside standalone mode. */
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    /* Height of the bottom tab bar, used to pad scroll containers. */
+    --tabbar-h: 4.25rem;
+  }
+
+  html {
+    background-color: var(--color-bg);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-txt);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    /* Kill the rubber-band white flash and double-tap zoom on iOS. */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* iOS zooms the viewport when a focused input is under 16px. Never allow it. */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    font-size: max(1rem, 16px);
+    color: inherit;
+  }
+
+  input,
+  textarea {
+    background-color: transparent;
+  }
+
+  /* The stock iOS number spinner and search decorations fight the theme. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+  input[type='search']::-webkit-search-decoration,
+  input[type='search']::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Utilities
+ * ------------------------------------------------------------------ */
+@utility pt-safe {
+  padding-top: var(--sat);
+}
+@utility pb-safe {
+  padding-bottom: var(--sab);
+}
+@utility px-safe {
+  padding-left: max(1rem, var(--sal));
+  padding-right: max(1rem, var(--sar));
+}
+@utility pb-scroll {
+  /* Clears the fixed tab bar plus the home indicator. */
+  padding-bottom: calc(var(--tabbar-h) + var(--sab) + 1.5rem);
+}
+
+/* A hairline that survives retina rounding better than border-width: 1px. */
+@utility hairline-t {
+  border-top: 1px solid var(--color-line);
+}
+
+@keyframes mf-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mf-pulse-ring {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes mf-shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+@utility animate-fade-up {
+  animation: mf-fade-up 0.32s var(--ease-out-quint) both;
+}
+@utility animate-pulse-ring {
+  animation: mf-pulse-ring 1.6s ease-in-out infinite;
+}
+@utility skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-surface-2) 0%,
+    var(--color-surface-3) 50%,
+    var(--color-surface-2) 100%
+  );
+  background-size: 180% 100%;
+  animation: mf-shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
