@@ -281,11 +281,22 @@ export interface Exercise {
   equipment?: string
   /** Bodyweight movements need the user's mass to compute real load. */
   bodyweight?: boolean
+  /** Short technique cues shown on the exercise page. */
+  cues?: string[]
+  /** Smallest load step available for this movement, in kg. */
+  incrementKg?: number
   isCustom?: boolean
   useCount: number
   lastUsedAt?: number
   deleted?: boolean
 }
+
+/**
+ * `warmup` sets never count toward volume or records. `drop` and `failure`
+ * count as hard sets; they are labelled so progression ignores them when
+ * deciding the next load.
+ */
+export type SetType = 'normal' | 'warmup' | 'drop' | 'failure'
 
 export interface WorkoutSet {
   id: string
@@ -297,7 +308,17 @@ export interface WorkoutSet {
   /** Rate of perceived exertion, 5–10 in half steps. */
   rpe?: number
   rir?: number
+  /** Kept in sync with `type === 'warmup'` so older rows still read right. */
   warmup?: boolean
+  type?: SetType
+  /* Targets copied from the routine when the workout was started, so a later
+     edit to the program never rewrites what a past session was aiming for. */
+  targetRepMin?: number
+  targetRepMax?: number
+  targetRir?: number
+  /** What the progression rule proposed for this set, for later audit. */
+  suggestedKg?: number
+  suggestedReps?: number
   /** Set was attempted but failed / cut short. */
   failed?: boolean
   note?: string
@@ -312,6 +333,49 @@ export interface Workout {
   endedAt?: number
   sets: WorkoutSet[]
   note?: string
+  /** Set when the session was started from a program day. */
+  programId?: string
+  dayId?: string
+  /** Display order of exercises; sets alone cannot order an exercise with none logged. */
+  exerciseOrder?: string[]
+  exerciseNotes?: Record<string, string>
+  /** Per-exercise rest in seconds, copied from the routine. */
+  restSec?: Record<string, number>
+  deleted?: boolean
+}
+
+/** One exercise slot inside a program day. */
+export interface RoutineExercise {
+  id: string
+  exerciseId: string
+  sets: number
+  repMin: number
+  repMax: number
+  /** Target reps in reserve for the working sets. */
+  rir: number
+  restSec: number
+  note?: string
+}
+
+export interface RoutineDay {
+  id: string
+  name: string
+  exercises: RoutineExercise[]
+}
+
+export interface Program {
+  id: string
+  name: string
+  description?: string
+  days: RoutineDay[]
+  /** Id of the bundled template this was copied from, if any. */
+  templateId?: string
+  /** 1 for the program currently being run, else 0 (IndexedDB cannot index booleans). */
+  active: 0 | 1
+  /** Index into `days` of the session that comes next. */
+  nextDayIndex: number
+  createdAt: number
+  updatedAt: number
   deleted?: boolean
 }
 
@@ -322,6 +386,13 @@ export interface Workout {
 export type Sex = 'male' | 'female'
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'high' | 'athlete'
 export type GoalDirection = 'lose' | 'maintain' | 'gain'
+
+/**
+ * How the calories left after protein are divided between carbohydrate and fat.
+ * Protein is set per kg of body mass first, because it has a requirement and
+ * the other two are a preference.
+ */
+export type MacroStyle = 'balanced' | 'low_fat' | 'low_carb' | 'keto'
 
 export interface MacroTargets {
   kcal: number
@@ -346,6 +417,17 @@ export interface Profile {
   manualTargets?: MacroTargets | null
   proteinPerKg: number
   fatPerKg: number
+  /** Body weight the goal ends at. Optional: a rate alone is a valid goal. */
+  goalWeightKg?: number
+  macroStyle: MacroStyle
+  /** Weekday (0 = Sunday) on which the weekly check-in falls due. */
+  checkinDay: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  /** Lowest daily calorie target the coach will ever set. 0 disables the floor. */
+  kcalFloor: number
+  /** Weekdays (0 = Sunday) that get extra calories, paid for by the others. */
+  highDays: number[]
+  /** Fraction above the weekly mean that a high day receives, e.g. 0.15. */
+  highDayBoost: number
   /**
    * Whether food is normally weighed raw or after cooking.
    *
@@ -360,6 +442,51 @@ export interface Profile {
   locale: 'en' | 'de'
   createdAt: number
   updatedAt: number
+}
+
+/**
+ * A weekly check-in: the moment targets are allowed to change.
+ *
+ * Between check-ins the targets are frozen. Recomputing them daily makes the
+ * number on the home screen wobble with every weigh-in, and a target that
+ * moves while you are trying to hit it is not a target.
+ */
+export interface CheckIn {
+  /** Local date the check-in was accepted; one per day at most. */
+  id: string
+  date: string
+  /** Expenditure estimate the new targets were built on, kcal/day. */
+  tdee: number
+  prevTdee?: number
+  targets: MacroTargets
+  prevTargets?: MacroTargets
+  trendKg?: number
+  /** Change in trend weight since the previous check-in (or over 7 days). */
+  trendDeltaKg?: number
+  /** Mean logged intake over the days since the previous check-in. */
+  avgIntake?: number
+  daysLogged: number
+  weighIns: number
+  /** Goal rate at the time, kg/week, so history stays interpretable. */
+  rateKgPerWeek: number
+  dataWeight: number
+  createdAt: number
+}
+
+/** Tape measurements in cm, keyed by site. One row per day. */
+export interface BodyMeasurement {
+  date: string
+  values: Record<string, number>
+  updatedAt: number
+}
+
+export interface ProgressPhoto {
+  id: string
+  date: string
+  angle: 'front' | 'side' | 'back'
+  /** Row in `photos` holding the image blob. */
+  photoId: string
+  createdAt: number
 }
 
 export type AiProvider = 'anthropic' | 'openai' | 'gemini' | 'proxy'
@@ -382,6 +509,12 @@ export interface Settings {
   firstDayOfWeek: 0 | 1
   showFiber: boolean
   keepPhotos: boolean
+  /** Default rest between sets in seconds, when a routine does not set one. */
+  restSec: number
+  restSound: boolean
+  /** Barbell mass and the plates available per side, for the plate calculator. */
+  barKg: number
+  platesKg: number[]
   updatedAt: number
 }
 

@@ -64,7 +64,8 @@ export default function App() {
           <Route path="/photo" element={<PhotoLog />} />
           <Route path="/voice" element={<VoiceLog />} />
           <Route path="/trends" element={<Trends />} />
-          <Route path="/train" element={<Train />} />
+          {/* Train owns everything under /train and routes it internally. */}
+          <Route path="/train/*" element={<Train />} />
           <Route path="/settings" element={<SettingsScreen />} />
         </Routes>
       </Suspense>

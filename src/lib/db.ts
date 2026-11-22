@@ -1,10 +1,14 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type {
+  BodyMeasurement,
+  CheckIn,
   CorrectionLog,
   Exercise,
   Food,
   LogEntry,
   Profile,
+  Program,
+  ProgressPhoto,
   Recipe,
   Settings,
   StoredPhoto,
@@ -28,6 +32,10 @@ class MacroForgeDB extends Dexie {
   settings!: EntityTable<Settings, 'id'>
   corrections!: EntityTable<CorrectionLog, 'id'>
   photos!: EntityTable<StoredPhoto, 'id'>
+  programs!: EntityTable<Program, 'id'>
+  checkins!: EntityTable<CheckIn, 'id'>
+  measurements!: EntityTable<BodyMeasurement, 'date'>
+  progressPhotos!: EntityTable<ProgressPhoto, 'id'>
 
   constructor() {
     super('macroforge')
@@ -44,6 +52,14 @@ class MacroForgeDB extends Dexie {
       settings: 'id',
       corrections: 'id, entryId, capturedAt, method',
       photos: 'id, createdAt',
+    })
+    // v2 adds tables only. Existing rows are untouched, and new optional
+    // fields on old rows are filled by the DEFAULT_* merges below.
+    this.version(2).stores({
+      programs: 'id, active, updatedAt',
+      checkins: 'id, date',
+      measurements: 'date',
+      progressPhotos: 'id, date',
     })
   }
 }
@@ -69,6 +85,11 @@ export const DEFAULT_PROFILE: Profile = {
   manualTargets: null,
   proteinPerKg: 2.0,
   fatPerKg: 0.8,
+  macroStyle: 'balanced',
+  checkinDay: 1,
+  kcalFloor: 1200,
+  highDays: [],
+  highDayBoost: 0.15,
   weighsFood: 'cooked',
   units: 'metric',
   locale: 'en',
@@ -85,6 +106,10 @@ export const DEFAULT_SETTINGS: Settings = {
   firstDayOfWeek: 1,
   showFiber: true,
   keepPhotos: true,
+  restSec: 120,
+  restSound: true,
+  barKg: 20,
+  platesKg: [25, 20, 15, 10, 5, 2.5, 1.25],
   updatedAt: 0,
 }
 
