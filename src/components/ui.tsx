@@ -31,7 +31,7 @@ export function Button({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const styles: Record<ButtonVariant, string> = {
     primary:
-      'bg-brand text-on-brand active:bg-brand-dim disabled:bg-brand-dim/50 shadow-[0_1px_0_rgba(255,255,255,0.08)_inset]',
+      'bg-brand text-on-brand active:bg-brand-dim disabled:bg-brand-dim/50',
     subtle: 'bg-surface-2 text-txt border border-line active:bg-surface-3',
     ghost: 'text-txt-2 active:bg-surface-2',
     danger: 'bg-transparent text-bad border border-bad/40 active:bg-bad/10',
@@ -117,7 +117,9 @@ export function Sheet({
           <div className="h-1 w-9 rounded-full bg-line-strong" />
         </div>
         {title && (
-          <div className="shrink-0 px-5 pb-3 pt-1 text-[1.0625rem] font-semibold">{title}</div>
+          <div className="shrink-0 px-5 pb-3 pt-1 font-display text-[1.375rem] font-medium leading-tight [font-variation-settings:'SOFT'_0,'WONK'_1]">
+            {title}
+          </div>
         )}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
           {children}
@@ -233,16 +235,17 @@ export function Badge({
   className?: string
 }) {
   const tones = {
-    neutral: 'bg-surface-3 text-txt-3 border-line',
+    neutral: 'bg-transparent text-txt-3 border-line-strong',
     ok: 'bg-ok/12 text-ok border-ok/25',
     warn: 'bg-warn/12 text-warn border-warn/25',
     bad: 'bg-bad/12 text-bad border-bad/25',
-    brand: 'bg-brand/15 text-brand-bright border-brand/30',
+    brand: 'bg-transparent text-brand-text border-brand/50',
   }
   return (
     <span
       className={clsx(
-        'inline-flex items-center gap-1 rounded border px-1.5 py-[0.1875rem] text-[0.625rem] font-bold uppercase tracking-[0.05em] leading-tight',
+        // Set like a rubber stamp: mono capitals in a thin ruled box.
+        'inline-flex items-center gap-1 rounded-sm border px-1.5 py-[0.1875rem] font-mono text-[0.5938rem] font-medium uppercase tracking-[0.1em] leading-tight',
         tones[tone],
         className,
       )}
@@ -266,7 +269,7 @@ export function EmptyState({
   return (
     <div className="grid place-items-center px-6 py-12 text-center">
       {icon && <div className="mb-3 text-txt-4">{icon}</div>}
-      <p className="text-[0.9375rem] font-bold tracking-tight text-txt-2">{title}</p>
+      <p className="font-display text-[1.1875rem] italic leading-snug text-txt-2">{title}</p>
       {body && <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-txt-3">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -293,11 +296,9 @@ export function Screen({
         <div className="mx-auto flex w-full max-w-md items-center gap-2 px-4 py-3">
           {left}
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[1.125rem] font-extrabold leading-tight tracking-[-0.02em]">
-              {title}
-            </h1>
+            <h1 className="truncate text-[1.5rem] leading-[1.15]">{title}</h1>
             {subtitle && (
-              <p className="mt-0.5 truncate text-[0.6875rem] font-semibold text-txt-3">{subtitle}</p>
+              <p className="mt-0.5 truncate font-display text-[0.8125rem] italic text-txt-3">{subtitle}</p>
             )}
           </div>
           {right}

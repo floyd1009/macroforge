@@ -84,7 +84,7 @@ export function PlateEditor({
       <Card className="p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <div className="text-display numeric text-[2.25rem] leading-none text-kcal">
+            <div className="text-display text-[2.5rem] leading-none text-kcal">
               {fmtKcal(total.nutrients.kcal)}
             </div>
             <div className="mt-1.5 text-xs font-semibold text-txt-2">

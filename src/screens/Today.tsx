@@ -83,7 +83,6 @@ export default function Today() {
       title={
         <button
           onClick={() => setDate(todayKey())}
-          className="text-[1.0625rem] font-semibold"
         >
           {humanDate(date)}
         </button>
@@ -201,7 +200,7 @@ export default function Today() {
           <>
             <div className="flex items-end justify-between gap-4">
               <div>
-                <div className="numeric text-[1.75rem] font-extrabold leading-none">
+                <div className="text-display text-[2.125rem] leading-none">
                   {fmtKg(currentKg)}
                   <span className="ml-1 text-base font-bold text-txt-3">kg</span>
                 </div>

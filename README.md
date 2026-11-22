@@ -172,6 +172,9 @@ than silently mis-parsing a nutrient column.
 
 MIT for the code.
 
+Typefaces, all SIL Open Font License 1.1 and self-hosted: Fraunces (Undercase
+Type and contributors), IBM Plex Sans and IBM Plex Mono (IBM).
+
 Nutrition data:
 - Bundeslebensmittelschlüssel 4.0 — Max Rubner-Institut (2025), **CC BY 4.0**.
   DOI [10.25826/Data20251217-134202-0](https://doi.org/10.25826/Data20251217-134202-0).

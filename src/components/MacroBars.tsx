@@ -75,10 +75,10 @@ export function CalorieHeader({
     <div>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-display numeric text-[3.25rem] leading-[0.92] text-kcal">
+          <div className="text-display text-[3.75rem] leading-[0.88] text-kcal">
             {fmtKcal(consumed, locale)}
           </div>
-          <div className="mt-2 text-[0.8125rem] font-semibold text-txt-2">
+          <div className="mt-2.5 font-display text-[0.9375rem] italic text-txt-2">
             kcal of {fmtKcal(target, locale)}
           </div>
         </div>
