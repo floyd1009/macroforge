@@ -117,7 +117,7 @@ export default function Trends() {
       <Card className="p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <div className="numeric text-[2rem] font-extrabold leading-none">{fmtKcal(expenditure.tdee)}</div>
+            <div className="text-display text-[2.5rem] leading-none">{fmtKcal(expenditure.tdee)}</div>
             <div className="mt-1.5 text-xs font-semibold text-txt-2">kcal per day</div>
           </div>
           {expenditure.meanIntake > 0 && (

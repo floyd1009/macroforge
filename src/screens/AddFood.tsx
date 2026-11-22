@@ -419,7 +419,7 @@ export function PortionSheet({
         <Card className="p-4">
           <div className="flex items-end justify-between">
             <div>
-              <div className="numeric text-[1.75rem] font-extrabold leading-none text-kcal">
+              <div className="text-display text-[2rem] leading-none text-kcal">
                 {fmtKcal(nutrients.kcal)}
               </div>
               <div className="mt-1 text-[0.6875rem] text-txt-3">

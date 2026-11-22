@@ -1,16 +1,52 @@
 @import 'tailwindcss';
 
 /* Self-hosted so the app keeps its typography offline and makes no request to
-   a third party. One variable file, 35 kB, covers 400–800. */
+   a third party. Three families, about 290 kB in total, all SIL OFL.
+
+   The declared weight ranges are deliberately narrower than the files. The
+   markup asks for 700 and 800 in many places; clamping the range here caps
+   every one of them at 600, which is what keeps the page from shouting. */
 @font-face {
-  font-family: 'Archivo';
-  src: url('/fonts/archivo-latin.woff2') format('woff2-variations');
-  font-weight: 400 800;
+  font-family: 'Fraunces';
+  src: url('/fonts/fraunces.woff2') format('woff2-variations');
+  font-weight: 300 600;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/fonts/fraunces-italic.woff2') format('woff2-variations');
+  font-weight: 300 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/plex-sans.woff2') format('woff2-variations');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/plex-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/plex-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/plex-mono-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* ------------------------------------------------------------------ *
@@ -71,16 +107,27 @@
   --color-raw: #5f4fa8;
   --color-tick: #ffffff;
 
-  /* Archivo: a grotesque with squared terminals and flat-sided bowls. Chosen
-     against the system stack because SF Pro's round, open shapes read as soft
-     at the sizes this app uses most — big numbers and small dense labels. */
-  --font-sans: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    system-ui, Roboto, sans-serif;
+  /* Three voices, each with one job, in the manner of a printed logbook.
+     Fraunces, an old-style serif with a deliberate wobble, sets titles and
+     the large readouts. IBM Plex Mono sets every measured number and every
+     label, so columns of figures line up like a ledger. IBM Plex Sans carries
+     the running text, where a serif at 13 px on a dark ground would blur. */
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  /* Tighter than the usual 16/14. Softer corners at this scale read generic;
-     these keep edges legible against the near-black ground. */
-  --radius-card: 0.75rem;
-  --radius-tile: 0.625rem;
+  /* Nearly square. Large radii are the signature of a generated dashboard;
+     a logbook has ruled lines and cut corners. The Tailwind scale is
+     overridden here so every rounded-* class in the markup follows. */
+  --radius-card: 0.1875rem;
+  --radius-tile: 0.125rem;
+  --radius-sm: 0.0625rem;
+  --radius-md: 0.125rem;
+  --radius-lg: 0.125rem;
+  --radius-xl: 0.1875rem;
+  --radius-2xl: 0.25rem;
+  --radius-3xl: 0.5rem;
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -110,10 +157,12 @@
     background-color: var(--color-bg);
     color: var(--color-txt);
     font-family: var(--font-sans);
-    /* 500 as the floor, not 400: at 13–15 px on black, regular weight goes
+    /* 450 rather than 400: at 13–15 px on a dark ground, regular weight goes
        thin and washed out rather than quiet. */
-    font-weight: 500;
-    letter-spacing: -0.006em;
+    font-weight: 450;
+    letter-spacing: 0;
+    /* A weight the font lacks must not be faked by smearing the outlines. */
+    font-synthesis: none;
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     /* Kill the rubber-band white flash and double-tap zoom on iOS. */
@@ -122,24 +171,46 @@
     touch-action: manipulation;
   }
 
-  /* Headings carry real weight and negative tracking so they read as set,
-     not as default-styled text. */
+  /* Titles are set in the serif at a middling weight. WONK switches on the
+     face's leaning, old-style letterforms; SOFT 0 keeps the serifs crisp.
+     Optical sizing is left automatic so 18 px and 52 px each get the cut
+     drawn for that size. */
   h1, h2, h3 {
-    font-weight: 700;
-    letter-spacing: -0.021em;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 0, 'WONK' 1;
+    letter-spacing: -0.012em;
     margin: 0;
   }
 
-  /* Optical sizing: large text needs tighter tracking than small text to look
-     evenly spaced. Applied by size, the way it would be set by hand. */
+  /* The large readouts: light, tight and in the serif, so the one number
+     that matters on a screen looks set by hand rather than rendered. */
   .text-display {
-    font-weight: 800;
+    font-family: var(--font-display);
+    font-weight: 380;
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 0, 'WONK' 1;
     letter-spacing: -0.035em;
-    font-feature-settings: 'tnum' 1, 'ss01' 1;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Paper grain. A flat dark fill is what makes a screen look generated; a
+     faint fixed noise gives the ground some tooth. It is a single tiled SVG
+     with no blend mode, so it costs one compositor layer and nothing per
+     frame. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.055;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   strong, b {
-    font-weight: 700;
+    font-weight: 600;
   }
 
   /* iOS zooms the viewport when a focused input is under 16px. Never allow it. */
@@ -205,21 +276,26 @@
   border-top: 1px solid var(--color-line);
 }
 
-/* Small uppercase section markers: heavy and widely tracked, so they read as
-   deliberate labelling rather than shrunken body text. */
+/* Small uppercase markers, set in the mono like the eyebrow labels in the
+   house documents: widely tracked, so they read as labelling, not as body
+   text shrunk down. */
 @utility label-micro {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-family: var(--font-mono);
+  font-size: 0.6563rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-/* Big readouts. Tabular figures are non-negotiable — a calorie total that
-   shifts sideways as it counts up looks broken. */
+/* Every measured figure is set in the mono. Fixed-width digits are what let
+   a column of weights or calories be read down as well as across, and a
+   total that shifts sideways as it counts up looks broken. */
 @utility numeric {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  /* A mono space is a full digit wide, which pulls "84.9 kg" apart. */
+  word-spacing: -0.3em;
 }
 
 @keyframes mf-fade-up {

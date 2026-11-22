@@ -36,8 +36,9 @@ export function TabBar() {
                 }}
                 aria-label="Add food"
                 className={clsx(
+                  // No glow: a flat gold key reads as an object, a glowing one as a render.
                   'grid size-13 place-items-center rounded-xl bg-brand text-on-brand',
-                  'shadow-[0_6px_20px_-6px_var(--color-brand)] transition-transform active:scale-92',
+                  'transition-transform active:scale-92',
                 )}
               >
                 <Plus size={26} strokeWidth={2.5} />
@@ -58,7 +59,7 @@ export function TabBar() {
                 {({ isActive }) => (
                   <>
                     <t.icon size={21} strokeWidth={isActive ? 2.4 : 2} />
-                    <span className="text-[0.625rem] font-bold uppercase tracking-[0.04em]">
+                    <span className="font-mono text-[0.5625rem] font-medium uppercase tracking-[0.12em]">
                       {t.label}
                     </span>
                   </>
