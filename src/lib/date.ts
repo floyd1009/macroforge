@@ -69,6 +69,22 @@ export function humanDate(key: DateKey, locale: 'en' | 'de' = 'en'): string {
   })
 }
 
+/**
+ * A date as it reads mid-sentence: "yesterday", "on Friday", "on 30 Nov".
+ * `humanDate` is for headings; lowercasing its output turns "30 Nov" into
+ * "30 nov" and "Friday" into "friday", so sentences use this instead.
+ */
+export function inlineDate(key: DateKey, withPreposition = true): string {
+  const delta = daysBetween(todayKey(), key)
+  if (delta === 0) return 'today'
+  if (delta === -1) return 'yesterday'
+  if (delta === 1) return 'tomorrow'
+  const d = fromKey(key)
+  const text =
+    Math.abs(delta) < 7 ? DAY_LABELS.en[d.getDay()] : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return withPreposition ? `on ${text}` : text
+}
+
 export function shortWeekday(key: DateKey, locale: 'en' | 'de' = 'en'): string {
   return fromKey(key).toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-GB', {
     weekday: 'short',

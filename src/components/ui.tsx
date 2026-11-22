@@ -127,23 +127,34 @@ export function Sheet({
   )
 }
 
+/**
+ * A labelled form row.
+ *
+ * Renders a `<label>` around a single text input, so tapping the caption
+ * focuses it. Pass `group` when the row holds buttons instead: a `<label>`
+ * labels the first button inside it, which means a tap on the caption or the
+ * hint text would press that button — silently changing a setting.
+ */
 export function Field({
   label,
   hint,
   children,
   className,
+  group = false,
 }: {
   label: string
   hint?: ReactNode
   children: ReactNode
   className?: string
+  group?: boolean
 }) {
+  const As = group ? 'div' : 'label'
   return (
-    <label className={clsx('block', className)}>
+    <As className={clsx('block', className)} {...(group ? { role: 'group', 'aria-label': label } : {})}>
       <span className="mb-1.5 block text-[0.8125rem] font-semibold tracking-tight text-txt-2">{label}</span>
       {children}
       {hint && <span className="mt-1.5 block text-xs leading-snug text-txt-3">{hint}</span>}
-    </label>
+    </As>
   )
 }
 

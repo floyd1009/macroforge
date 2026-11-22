@@ -6,6 +6,12 @@ import {
   bmrMifflin,
   checkEnergy,
   computeTargets,
+  daysToGoal,
+  FAT_FLOOR_PER_KG,
+  goalCalories,
+  KETO_CARBS_G,
+  recipeTotals,
+  shiftForWeekday,
   kcalFromMacros,
   kjToKcal,
   convertMass,
@@ -162,6 +168,11 @@ const profile: Profile = {
   manualTargets: null,
   proteinPerKg: 2.0,
   fatPerKg: 0.8,
+  macroStyle: 'balanced',
+  checkinDay: 1,
+  kcalFloor: 0,
+  highDays: [],
+  highDayBoost: 0.15,
   weighsFood: 'cooked',
   units: 'metric',
   locale: 'de',
@@ -227,11 +238,11 @@ describe('targets', () => {
   it('sets protein and fat first, then fills with carbs', () => {
     const t = computeTargets({ profile, tdee: 3000, currentKg: 80 })
     expect(t.protein).toBe(160) // 80 kg * 2.0
-    expect(t.fat).toBe(64) // 80 kg * 0.8
     // 3000 - (0.5*7700/7 = 550) = 2450
     expect(t.kcal).toBe(2450)
-    // (2450 - 160*4 - 64*9) / 4 = (2450 - 640 - 576) / 4 = 308.5 -> 309
-    expect(t.carbs).toBe(309)
+    // Balanced: the 1810 kcal left after protein split evenly by energy.
+    expect(t.fat).toBe(101) // 905 / 9 = 100.6
+    expect(t.carbs).toBe(225) // (1810 - 101*9) / 4 = 225.25
     // The three macros must reconstruct the calorie target.
     expect(t.protein * 4 + t.carbs * 4 + t.fat * 9).toBeCloseTo(t.kcal, -1)
   })
@@ -252,6 +263,124 @@ describe('targets', () => {
     const manual = { kcal: 2222, protein: 180, carbs: 200, fat: 60 }
     const t = computeTargets({ profile: { ...profile, manualTargets: manual }, tdee: 3000, currentKg: 80 })
     expect(t).toEqual(manual)
+  })
+})
+
+describe('macro styles', () => {
+  const at = (macroStyle: Profile['macroStyle']) =>
+    computeTargets({ profile: { ...profile, macroStyle }, tdee: 3000, currentKg: 80 })
+
+  it('keeps calories and protein identical across styles', () => {
+    for (const style of ['balanced', 'low_fat', 'low_carb', 'keto'] as const) {
+      const t = at(style)
+      expect(t.kcal).toBe(2450)
+      expect(t.protein).toBe(160)
+      // Whatever the split, the macros must reconstruct the calorie target.
+      expect(Math.abs(t.protein * 4 + t.carbs * 4 + t.fat * 9 - t.kcal)).toBeLessThan(10)
+    }
+  })
+
+  it('orders fat low_fat < balanced < low_carb < keto', () => {
+    expect(at('low_fat').fat).toBeLessThan(at('balanced').fat)
+    expect(at('balanced').fat).toBeLessThan(at('low_carb').fat)
+    expect(at('low_carb').fat).toBeLessThan(at('keto').fat)
+  })
+
+  it('holds keto carbohydrate at the ceiling', () => {
+    expect(at('keto').carbs).toBeLessThanOrEqual(KETO_CARBS_G + 1)
+  })
+
+  it('never drops fat below the per-kg floor', () => {
+    // A small budget on low-fat is where the floor has to bite.
+    const t = computeTargets({ profile: { ...profile, macroStyle: 'low_fat' }, tdee: 1700, currentKg: 80 })
+    expect(t.fat).toBeGreaterThanOrEqual(Math.round(80 * FAT_FLOOR_PER_KG))
+  })
+
+  it('caps protein rather than exceeding the calorie target', () => {
+    const t = computeTargets({
+      profile: { ...profile, proteinPerKg: 3.5, rateKgPerWeek: -1 },
+      tdee: 1600,
+      currentKg: 110,
+    })
+    expect(t.protein * 4 + t.carbs * 4 + t.fat * 9).toBeLessThanOrEqual(t.kcal + 10)
+  })
+})
+
+describe('calorie floor', () => {
+  it('applies the absolute floor when the goal would go under it', () => {
+    expect(goalCalories(1700, -1, 1200)).toBe(1200)
+  })
+
+  it('is the relative floor when no absolute one is set', () => {
+    expect(goalCalories(1700, -1, 0)).toBeCloseTo(1700 * 0.65, 5)
+  })
+
+  it('does nothing when the goal is above both floors', () => {
+    expect(goalCalories(3000, -0.5, 1200)).toBeCloseTo(2450, 5)
+  })
+})
+
+describe('calorie shifting', () => {
+  const base = { kcal: 2400, protein: 160, carbs: 250, fat: 84, fiber: 34 }
+
+  it('leaves the weekly total unchanged', () => {
+    const highDays = [5, 6]
+    let week = 0
+    for (let d = 0; d < 7; d++) week += shiftForWeekday(base, d, highDays, 0.15).kcal
+    // Rounding each day to a whole kcal can move the sum by a few.
+    expect(Math.abs(week - base.kcal * 7)).toBeLessThanOrEqual(7)
+  })
+
+  it('gives high days more and the rest less, with protein fixed', () => {
+    const hi = shiftForWeekday(base, 6, [5, 6], 0.15)
+    const lo = shiftForWeekday(base, 1, [5, 6], 0.15)
+    expect(hi.kcal).toBe(2760)
+    expect(lo.kcal).toBe(2256) // 2400 * (1 - 0.15*2/5)
+    expect(hi.protein).toBe(160)
+    expect(lo.protein).toBe(160)
+  })
+
+  it('is a no-op with no high days, or with every day high', () => {
+    expect(shiftForWeekday(base, 3, [], 0.15)).toBe(base)
+    expect(shiftForWeekday(base, 3, [0, 1, 2, 3, 4, 5, 6], 0.15)).toBe(base)
+  })
+})
+
+describe('goal projection', () => {
+  it('counts the days to the goal at the planned rate', () => {
+    // 5 kg to lose at 0.5 kg/week = 10 weeks.
+    expect(daysToGoal(85, 80, -0.5)).toBe(70)
+  })
+
+  it('returns null when the rate points away from the goal', () => {
+    expect(daysToGoal(85, 80, 0.25)).toBeNull()
+    expect(daysToGoal(85, 80, 0)).toBeNull()
+    expect(daysToGoal(85, undefined, -0.5)).toBeNull()
+  })
+})
+
+describe('recipes', () => {
+  const ingredients = [
+    // 500 g raw chicken breast and 200 g dry rice.
+    { resolvedAmount: 500, nutrients: per100({ kcal: 550, protein: 115, carbs: 0, fat: 9 }) },
+    { resolvedAmount: 200, nutrients: per100({ kcal: 700, protein: 14, carbs: 156, fat: 2 }) },
+  ]
+
+  it('sums ingredients and divides by portions', () => {
+    const t = recipeTotals({ ingredients, portions: 4 })
+    expect(t.total.kcal).toBe(1250)
+    expect(t.perPortion.kcal).toBeCloseTo(312.5, 5)
+    expect(t.perPortion.protein).toBeCloseTo(32.25, 5)
+  })
+
+  it('uses the cooked weight for per-100 g when it is known', () => {
+    // Rice takes on water and chicken loses it; the dish weighs 950 g, not 700 g.
+    const raw = recipeTotals({ ingredients, portions: 4 })
+    const cooked = recipeTotals({ ingredients, portions: 4, totalGrams: 950 })
+    expect(raw.per100.kcal).toBeCloseTo(1250 / 7, 4)
+    expect(cooked.per100.kcal).toBeCloseTo(1250 / 9.5, 4)
+    // Energy in the pot is the same either way.
+    expect(cooked.total.kcal).toBe(raw.total.kcal)
   })
 })
 

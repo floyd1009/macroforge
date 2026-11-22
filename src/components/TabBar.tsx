@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { BarChart3, Dumbbell, Home, Plus, Settings as Cog } from 'lucide-react'
 import clsx from 'clsx'
+import { logDate, setLogTarget } from '../lib/logTarget'
 
 const tabs = [
   { to: '/', icon: Home, label: 'Today', end: true },
@@ -28,7 +29,11 @@ export function TabBar() {
           t.to === null ? (
             <li key="add" className="flex flex-1 items-center justify-center">
               <button
-                onClick={() => navigate('/add')}
+                onClick={() => {
+                  // Keep the day being viewed, but forget any meal picked earlier.
+                  setLogTarget(logDate())
+                  navigate('/add')
+                }}
                 aria-label="Add food"
                 className={clsx(
                   'grid size-13 place-items-center rounded-xl bg-brand text-white',

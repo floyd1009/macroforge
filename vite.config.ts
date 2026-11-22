@@ -45,8 +45,8 @@ export default defineConfig({
       manifest: {
         name: 'MacroForge',
         short_name: 'MacroForge',
-        description: 'Offline-first macro & training tracker with AI photo and voice logging.',
-        lang: 'de-DE',
+        description: 'Macro and training tracker with adaptive targets, programs and auto-progression. Works offline, no account.',
+        lang: 'en',
         start_url: base,
         scope: base,
         display: 'standalone',

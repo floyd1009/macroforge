@@ -1,15 +1,21 @@
 import { db, getProfile, getSettings, newId } from './db'
-import { addDays, todayKey, type DateKey } from './date'
+import { addDays, fromKey, toKey, todayKey, type DateKey } from './date'
+import { checkinFor, isCheckinDue, nextCheckinDate, reviewWeek, toCheckIn, type CheckinReview } from './checkin'
 import {
   adaptiveExpenditure,
   computeTargets,
+  expenditureSeries,
+  kcalFromMacros,
+  recipeTotals,
   scale,
+  shiftForWeekday,
   sum,
   trendSeries,
   ZERO,
   type ExpenditureEstimate,
 } from './nutrition'
 import type {
+  CheckIn,
   Confidence,
   FoodSource,
   FoodState,
@@ -21,6 +27,7 @@ import type {
   MealSlot,
   Nutrients,
   Profile,
+  Recipe,
   Settings,
   WeightEntry,
 } from './types'
@@ -44,19 +51,29 @@ export function groupByMeal(entries: LogEntry[]): Record<MealSlot, LogEntry[]> {
   return out
 }
 
-/** Daily kcal totals over a trailing window, skipping days with nothing logged. */
-export async function intakeHistory(days = 60): Promise<Array<{ date: DateKey; kcal: number }>> {
+export interface DayIntake {
+  date: DateKey
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+/** Daily totals over a trailing window, skipping days with nothing logged. */
+export async function intakeHistory(days = 60): Promise<DayIntake[]> {
   const start = addDays(todayKey(), -days)
   const rows = await db.entries.where('date').aboveOrEqual(start).toArray()
-  const byDate = new Map<DateKey, number>()
+  const byDate = new Map<DateKey, DayIntake>()
   for (const e of rows) {
     if (e.deleted) continue
-    byDate.set(e.date, (byDate.get(e.date) ?? 0) + e.nutrients.kcal)
+    const d = byDate.get(e.date) ?? { date: e.date, kcal: 0, protein: 0, carbs: 0, fat: 0 }
+    d.kcal += e.nutrients.kcal
+    d.protein += e.nutrients.protein
+    d.carbs += e.nutrients.carbs
+    d.fat += e.nutrients.fat
+    byDate.set(e.date, d)
   }
-  return [...byDate.entries()]
-    .map(([date, kcal]) => ({ date, kcal }))
-    .filter((d) => d.kcal > 0)
-    .sort((a, b) => a.date.localeCompare(b.date))
+  return [...byDate.values()].filter((d) => d.kcal > 0).sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export async function weightHistory(days = 180): Promise<WeightEntry[]> {
@@ -78,21 +95,42 @@ export interface DayPlan {
   date: DateKey
   profile: Profile
   settings: Settings
+  /** Targets for this calendar day, after any calorie shifting. */
   targets: MacroTargets
+  /** The week's mean targets, before shifting. */
+  weekTargets: MacroTargets
+  /** Where the targets came from. */
+  targetSource: 'manual' | 'checkin' | 'live'
   expenditure: ExpenditureEstimate
   consumed: Nutrients
   entries: LogEntry[]
   currentKg?: number
   trendKg?: number
+  /** Check-in whose targets are in force, if any. */
+  checkin?: CheckIn
+  checkinDue: boolean
+  nextCheckin: DateKey
 }
 
-export async function buildDayPlan(date: DateKey = todayKey()): Promise<DayPlan> {
-  const [profile, settings, entries, weights, intake] = await Promise.all([
+interface PlanInputs {
+  profile: Profile
+  settings: Settings
+  trend: Array<{ date: DateKey; kg: number; trendKg: number }>
+  intake: DayIntake[]
+  bodyFatPct?: number
+  currentKg?: number
+  expenditure: ExpenditureEstimate
+  liveTargets: MacroTargets
+  checkins: CheckIn[]
+}
+
+async function planInputs(): Promise<PlanInputs> {
+  const [profile, settings, weights, intake, checkins] = await Promise.all([
     getProfile(),
     getSettings(),
-    entriesForDay(date),
-    weightHistory(180),
-    intakeHistory(60),
+    weightHistory(400),
+    intakeHistory(120),
+    db.checkins.toArray(),
   ])
 
   const trend = trendSeries(
@@ -114,24 +152,144 @@ export async function buildDayPlan(date: DateKey = todayKey()): Promise<DayPlan>
     bodyFatPct,
   })
 
-  const targets = computeTargets({
+  const liveTargets = computeTargets({
     profile,
     tdee: expenditure.tdee,
     currentKg: currentKg ?? 75,
     bodyFatPct,
   })
 
+  return { profile, settings, trend, intake, bodyFatPct, currentKg, expenditure, liveTargets, checkins }
+}
+
+/** Everything the Trends screen charts, computed once from the same inputs as the plan. */
+export async function buildTrends() {
+  const i = await planInputs()
+  const weights = await weightHistory(400)
+  return {
+    profile: i.profile,
+    weights,
+    trend: i.trend,
+    intake: i.intake,
+    expenditure: i.expenditure,
+    liveTargets: i.liveTargets,
+    checkins: [...i.checkins].sort((a, b) => b.date.localeCompare(a.date)),
+    expenditureHistory: expenditureSeries({
+      profile: i.profile,
+      intake: i.intake,
+      trend: i.trend,
+      bodyFatPct: i.bodyFatPct,
+    }),
+  }
+}
+
+/** The day the check-in clock starts from when no check-in exists yet. */
+function checkinAnchor(profile: Profile, checkins: CheckIn[]): DateKey {
+  const latest = checkins.reduce<CheckIn | undefined>((m, c) => (!m || c.date > m.date ? c : m), undefined)
+  if (latest) return latest.date
+  return profile.createdAt ? toKey(new Date(profile.createdAt)) : todayKey()
+}
+
+export async function buildDayPlan(date: DateKey = todayKey()): Promise<DayPlan> {
+  const [inputs, entries] = await Promise.all([planInputs(), entriesForDay(date)])
+  const { profile, settings, trend, expenditure, liveTargets, checkins } = inputs
+  const last = trend[trend.length - 1]
+
+  // Frozen weekly targets win over the live estimate; a manual override wins
+  // over both. Days before the first check-in fall back to the earliest one so
+  // history is not re-scored against today's estimate.
+  const checkin =
+    checkinFor(checkins, date) ?? [...checkins].sort((a, b) => a.date.localeCompare(b.date))[0]
+  const targetSource: DayPlan['targetSource'] = profile.manualTargets ? 'manual' : checkin ? 'checkin' : 'live'
+  const weekTargets = profile.manualTargets ?? checkin?.targets ?? liveTargets
+  const targets = shiftForWeekday(weekTargets, fromKey(date).getDay(), profile.highDays, profile.highDayBoost)
+
+  const anchor = checkinAnchor(profile, checkins)
   return {
     date,
     profile,
     settings,
     targets,
+    weekTargets,
+    targetSource,
     expenditure,
     consumed: totals(entries),
     entries,
     currentKg: last?.kg,
     trendKg: last?.trendKg,
+    checkin,
+    checkinDue: !profile.manualTargets && isCheckinDue(todayKey(), anchor, profile.checkinDay),
+    nextCheckin: nextCheckinDate(anchor, profile.checkinDay),
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * Weekly check-in
+ * ------------------------------------------------------------------ */
+
+export async function buildCheckinReview(): Promise<CheckinReview & { dataWeight: number }> {
+  const i = await planInputs()
+  const previous = checkinFor(i.checkins, todayKey())
+  const review = reviewWeek({
+    today: todayKey(),
+    profile: i.profile,
+    previous,
+    expenditure: i.expenditure,
+    currentKg: i.currentKg ?? 75,
+    bodyFatPct: i.bodyFatPct,
+    intake: i.intake,
+    trend: i.trend,
+    currentTargets: i.liveTargets,
+  })
+  return { ...review, dataWeight: i.expenditure.dataWeight }
+}
+
+export async function completeCheckin(review: CheckinReview & { dataWeight: number }, accept: boolean): Promise<void> {
+  const profile = await getProfile()
+  await db.checkins.put(toCheckIn(todayKey(), review, profile, review.dataWeight, accept))
+}
+
+/**
+ * Re-derive the current week's targets after a goal or macro setting changes.
+ *
+ * The expenditure estimate stays frozen for the week, but a changed goal has
+ * to take effect immediately — otherwise switching from a cut to maintenance
+ * would leave the deficit in place until the next check-in.
+ */
+export async function retargetCurrentWeek(): Promise<void> {
+  const i = await planInputs()
+  const current = checkinFor(i.checkins, todayKey())
+  if (!current) return
+  const targets = computeTargets({
+    profile: i.profile,
+    tdee: current.tdee,
+    currentKg: i.currentKg ?? 75,
+    bodyFatPct: i.bodyFatPct,
+  })
+  await db.checkins.update(current.id, { targets, rateKgPerWeek: i.profile.rateKgPerWeek })
+}
+
+/** Save profile changes and keep the frozen weekly targets consistent with them. */
+export async function saveProfile(patch: Partial<Profile>): Promise<void> {
+  const profile = await getProfile()
+  const now = Date.now()
+  await db.profile.put({ ...profile, ...patch, createdAt: profile.createdAt || now, updatedAt: now })
+  await retargetCurrentWeek()
+}
+
+/** Consecutive days with at least one logged entry, ending today or yesterday. */
+export async function loggingStreak(): Promise<number> {
+  const start = addDays(todayKey(), -400)
+  const rows = await db.entries.where('date').aboveOrEqual(start).toArray()
+  const days = new Set(rows.filter((e) => !e.deleted).map((e) => e.date))
+  // An unlogged today does not break the streak until the day is over.
+  let cursor = days.has(todayKey()) ? todayKey() : addDays(todayKey(), -1)
+  let n = 0
+  while (days.has(cursor)) {
+    n++
+    cursor = addDays(cursor, -1)
+  }
+  return n
 }
 
 /* ------------------------------------------------------------------ *
@@ -239,10 +397,15 @@ export async function updateEntryAmount(
   const food = entry.foodId ? await db.foods.get(entry.foodId) : undefined
   const resolved = resolveAmount(food, amount, unit, servingLabel)
 
-  // Without a Food row the only sane rescale is proportional to the old amount.
-  const nutrients = food
-    ? scale(food.per100, resolved)
-    : scale(scale(entry.nutrients, 100 / (entry.resolvedAmount || 100)), resolved)
+  // Rescale the entry's own snapshot rather than re-reading the food row. The
+  // snapshot already carries whatever raw/cooked conversion was applied when
+  // it was logged, and a later edit to the food must not rewrite a past day.
+  const nutrients =
+    entry.resolvedAmount > 0
+      ? scale(scale(entry.nutrients, 100 / entry.resolvedAmount), resolved * 100)
+      : food
+        ? scale(food.per100, resolved)
+        : entry.nutrients
 
   await db.entries.update(id, {
     amount,
@@ -293,6 +456,163 @@ export async function copyMeal(from: DateKey, meal: MealSlot, to: DateKey): Prom
   }))
   await db.entries.bulkAdd(copies)
   return copies.length
+}
+
+/** Copy a whole day's log into another day. */
+export async function copyDay(from: DateKey, to: DateKey): Promise<number> {
+  const src = await entriesForDay(from)
+  const existing = await entriesForDay(to)
+  let sort = existing.reduce((m, e) => Math.max(m, e.sort), 0)
+  const now = Date.now()
+  const copies = src.map((e) => ({
+    ...e,
+    id: newId(),
+    date: to,
+    createdAt: now,
+    updatedAt: now,
+    method: 'repeat' as EntryMethod,
+    sort: ++sort,
+  }))
+  await db.entries.bulkAdd(copies)
+  return copies.length
+}
+
+/** Most recent earlier day on which `meal` has entries, within two weeks. */
+export async function lastDayWithMeal(before: DateKey, meal?: MealSlot): Promise<DateKey | undefined> {
+  const rows = await db.entries.where('date').between(addDays(before, -14), before, true, false).toArray()
+  const days = rows.filter((e) => !e.deleted && (!meal || e.meal === meal)).map((e) => e.date)
+  return days.sort().pop()
+}
+
+/**
+ * Log calories and macros with no food behind them.
+ *
+ * If only macros are given the energy is derived from them; if only energy is
+ * given the macros stay at zero, which under-reports protein for the day but
+ * is still better than not logging the meal at all.
+ */
+export async function quickAdd(args: {
+  date: DateKey
+  meal: MealSlot
+  name?: string
+  kcal?: number
+  protein?: number
+  carbs?: number
+  fat?: number
+}): Promise<LogEntry> {
+  const protein = args.protein ?? 0
+  const carbs = args.carbs ?? 0
+  const fat = args.fat ?? 0
+  const kcal = args.kcal ?? kcalFromMacros({ protein, carbs, fat })
+  return addEntry({
+    date: args.date,
+    meal: args.meal,
+    name: args.name?.trim() || 'Quick add',
+    amount: 1,
+    unit: 'serving',
+    nutrients: { kcal, protein, carbs, fat },
+    method: 'quick',
+    provenance: 'manual',
+    confidence: 'medium',
+  })
+}
+
+export async function saveCustomFood(args: {
+  id?: string
+  name: string
+  brand?: string
+  basis: 'g' | 'ml'
+  per100: Nutrients
+  servingLabel?: string
+  servingAmount?: number
+}): Promise<Food> {
+  const now = Date.now()
+  const existing = args.id ? await db.foods.get(args.id) : undefined
+  const servings = [
+    ...(args.servingAmount && args.servingAmount > 0
+      ? [
+          {
+            label: `${args.servingLabel?.trim() || '1 serving'} (${Math.round(args.servingAmount)} ${args.basis})`,
+            amount: args.servingAmount,
+            isDefault: true,
+          },
+        ]
+      : []),
+    { label: `100 ${args.basis}`, amount: 100, isDefault: !args.servingAmount },
+    { label: `1 ${args.basis}`, amount: 1 },
+  ]
+  const food: Food = {
+    id: existing?.id ?? `custom:${newId()}`,
+    source: 'custom',
+    name: args.name.trim(),
+    brand: args.brand?.trim() || undefined,
+    state: 'as_sold',
+    basis: args.basis,
+    carbBasis: 'available',
+    per100: args.per100,
+    servings,
+    verified: true,
+    provenance: 'entered by you',
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    useCount: existing?.useCount ?? 0,
+    lastUsedAt: existing?.lastUsedAt ?? now,
+    favorite: existing?.favorite,
+  }
+  await db.foods.put(food)
+  invalidateFoodIndex()
+  return food
+}
+
+export async function toggleFavorite(foodId: string): Promise<void> {
+  const f = await db.foods.get(foodId)
+  if (f) await db.foods.update(foodId, { favorite: !f.favorite })
+}
+
+/* ------------------------------------------------------------------ *
+ * Recipes
+ * ------------------------------------------------------------------ */
+
+/** Store a recipe and the loggable food derived from it. */
+export async function saveRecipe(recipe: Recipe): Promise<Food> {
+  const now = Date.now()
+  const t = recipeTotals(recipe)
+  await db.recipes.put({ ...recipe, updatedAt: now })
+  const id = `recipe:${recipe.id}`
+  const existing = await db.foods.get(id)
+  const portionGrams = t.grams / Math.max(1, recipe.portions || 1)
+  const food: Food = {
+    id,
+    source: 'custom',
+    sourceId: id,
+    name: recipe.name.trim() || 'Recipe',
+    brand: 'Recipe',
+    state: 'as_sold',
+    basis: 'g',
+    carbBasis: 'available',
+    per100: t.per100,
+    servings: [
+      { label: `1 portion (${Math.round(portionGrams)} g)`, amount: portionGrams, isDefault: true },
+      { label: '100 g', amount: 100 },
+      { label: '1 g', amount: 1 },
+    ],
+    verified: true,
+    provenance: `your recipe, ${recipe.ingredients.length} ingredients`,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    useCount: existing?.useCount ?? 0,
+    lastUsedAt: existing?.lastUsedAt ?? now,
+    favorite: existing?.favorite,
+  }
+  await db.foods.put(food)
+  invalidateFoodIndex()
+  return food
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  await db.recipes.update(id, { deleted: true, updatedAt: Date.now() })
+  await db.foods.update(`recipe:${id}`, { deleted: true, updatedAt: Date.now() })
+  invalidateFoodIndex()
 }
 
 async function touchFood(id: string): Promise<void> {
@@ -463,7 +783,12 @@ function scoreEntry(
   return s
 }
 
-export async function searchLocalFoods(query: string, limit = 30): Promise<Food[]> {
+export async function searchLocalFoods(
+  query: string,
+  limit = 30,
+  /** Override the profile's raw/cooked preference, e.g. recipes are built from raw weights. */
+  state?: 'raw' | 'cooked',
+): Promise<Food[]> {
   const q = query.trim().toLowerCase()
 
   if (!q) {
@@ -474,7 +799,7 @@ export async function searchLocalFoods(query: string, limit = 30): Promise<Food[
 
   const [index, profile] = await Promise.all([getIndex(), getProfile()])
   const tokens = q.split(/\s+/).filter(Boolean)
-  const prefers = profile.weighsFood ?? 'cooked'
+  const prefers = state ?? profile.weighsFood ?? 'cooked'
 
   const scored: Array<{ id: string; s: number }> = []
   for (const e of index) {

@@ -4,7 +4,7 @@ import { ChevronLeft, Info, Mic, Sparkles } from 'lucide-react'
 import { Button, Card, IconButton, Screen, Spinner, Textarea } from '../components/ui'
 import { PlateEditor } from '../components/PlateEditor'
 import { newId } from '../lib/db'
-import { todayKey } from '../lib/date'
+import { logDate, logMeal } from '../lib/logTarget'
 import { addEntry } from '../lib/repo'
 import type { MealSlot } from '../lib/types'
 import { AiError } from '../services/ai/client'
@@ -24,7 +24,7 @@ export default function VoiceLog() {
   const [analysis, setAnalysis] = useState<VoiceAnalysis | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [meal, setMeal] = useState<MealSlot>('snack')
+  const [meal, setMeal] = useState<MealSlot>(logMeal())
   const areaRef = useRef<HTMLTextAreaElement>(null)
   const mode = detectVoiceMode()
 
@@ -58,7 +58,7 @@ export default function VoiceLog() {
     const captureId = newId()
     for (const item of items) {
       await addEntry({
-        date: todayKey(),
+        date: logDate(),
         meal,
         food: item.food,
         name: item.food?.name ?? item.food?.nameDe ?? item.raw.name,

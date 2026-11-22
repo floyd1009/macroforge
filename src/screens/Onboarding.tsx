@@ -40,7 +40,15 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       heightCm: h && h > 80 && h < 260 ? h : DEFAULT_PROFILE.heightCm,
       birthDate: birth || undefined,
       goal,
-      rateKgPerWeek: goal === 'lose' ? -0.5 : goal === 'gain' ? 0.25 : 0,
+      // Half a percent of body weight a week to lose, a quarter to gain: the
+      // middle of the ranges offered in Settings. 80 kg stands in when no
+      // weight was given.
+      rateKgPerWeek:
+        goal === 'lose'
+          ? -Math.round((w && w > 20 ? w : 80) * 0.5) / 100
+          : goal === 'gain'
+            ? Math.round((w && w > 20 ? w : 80) * 0.25) / 100
+            : 0,
       weighsFood,
       createdAt: now,
       updatedAt: now,
@@ -107,7 +115,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             </p>
 
             <div className="mt-6 space-y-4">
-              <Field label="Sex">
+              <Field label="Sex" group>
                 <Segmented
                   options={[
                     { value: 'male' as Sex, label: 'Male' },
@@ -143,7 +151,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 <Input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
               </Field>
 
-              <Field label="Goal">
+              <Field label="Goal" group>
                 <Segmented
                   options={[
                     { value: 'lose' as GoalDirection, label: 'Lose' },
@@ -158,6 +166,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               <Field
                 label="Do you weigh food raw or cooked?"
                 hint="Cooked meat has lost water. Logging 150 g cooked against a raw entry under-counts protein by about 28%, so the app needs to know which you mean."
+                group
               >
                 <Segmented
                   options={[

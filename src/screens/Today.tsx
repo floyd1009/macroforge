@@ -1,11 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, ChevronLeft, ChevronRight, Mic, Plus, ScanLine, Scale, Search, Trash2 } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Camera, ChevronLeft, ChevronRight, ClipboardCheck, Copy, Flame, Mic, Plus, ScanLine, Scale, Search } from 'lucide-react'
+import { CheckinSheet } from '../components/CheckinSheet'
 import { CalorieHeader, MacroChips, MacroRows } from '../components/MacroBars'
-import { Badge, Button, Card, EmptyState, IconButton, Input, Screen, Sheet, SectionTitle } from '../components/ui'
-import { addDays, humanDate, isFuture, todayKey } from '../lib/date'
-import { kcal as fmtKcal, kg as fmtKg, num, signed } from '../lib/format'
-import { deleteEntry, saveWeight } from '../lib/repo'
+import { Badge, Button, Card, EmptyState, IconButton, Input, Screen, Segmented, Sheet, SectionTitle } from '../components/ui'
+import { addDays, humanDate, inlineDate, isFuture, isToday, todayKey } from '../lib/date'
+import { kcal as fmtKcal, kg as fmtKg, num, parseNumber, signed } from '../lib/format'
+import { setLogTarget } from '../lib/logTarget'
+import { scale } from '../lib/nutrition'
+import {
+  copyDay,
+  copyMeal,
+  deleteEntry,
+  lastDayWithMeal,
+  loggingStreak,
+  moveEntry,
+  saveWeight,
+  updateEntryAmount,
+} from '../lib/repo'
 import { useDayPlan } from '../lib/useDb'
 import { MEAL_SLOTS, PROVENANCE_ERROR, type LogEntry, type MealSlot } from '../lib/types'
 
@@ -19,8 +32,21 @@ const MEAL_LABELS: Record<MealSlot, string> = {
 export default function Today() {
   const [date, setDate] = useState(todayKey())
   const [weightOpen, setWeightOpen] = useState(false)
+  const [checkinOpen, setCheckinOpen] = useState(false)
+  const [editing, setEditing] = useState<LogEntry | null>(null)
   const plan = useDayPlan(date)
   const navigate = useNavigate()
+  const streak = useLiveQuery(() => loggingStreak(), [])
+  // The most recent earlier day with anything logged, for "copy previous day".
+  const previousDay = useLiveQuery(() => lastDayWithMeal(date), [date])
+
+  // Every add screen logs to the day being viewed, not blindly to today.
+  useEffect(() => setLogTarget(date), [date])
+
+  const add = (path: string, meal?: MealSlot) => {
+    setLogTarget(date, meal)
+    navigate(path)
+  }
 
   if (!plan) {
     return (
@@ -44,7 +70,13 @@ export default function Today() {
   const byMeal = MEAL_SLOTS.map((m) => ({
     meal: m,
     items: entries.filter((e) => e.meal === m),
-  })).filter((g) => g.items.length > 0)
+  }))
+  const dayTarget =
+    plan.targets.kcal !== plan.weekTargets.kcal
+      ? plan.targets.kcal > plan.weekTargets.kcal
+        ? 'High day'
+        : 'Low day'
+      : null
 
   return (
     <Screen
@@ -73,14 +105,40 @@ export default function Today() {
         </IconButton>
       }
     >
+      {plan.checkinDue && isToday(date) && (
+        <button
+          onClick={() => setCheckinOpen(true)}
+          className="mt-2 flex w-full items-center gap-3 rounded-card border border-brand/50 bg-brand-wash px-4 py-3.5 text-left active:bg-surface-2"
+        >
+          <ClipboardCheck size={20} className="shrink-0 text-brand-text" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.9375rem] font-bold tracking-[-0.015em]">Weekly check-in is ready</span>
+            <span className="mt-0.5 block text-[0.6875rem] font-semibold text-txt-3">
+              Review the week and set next week's targets
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-txt-3" />
+        </button>
+      )}
+
       <Card className="mt-2 p-5">
         <CalorieHeader consumed={consumed.kcal} target={targets.kcal} uncertainty={uncertainty} />
         <div className="mt-5 border-t border-line pt-4">
           <MacroRows consumed={consumed} targets={targets} showFiber={plan.settings.showFiber} />
         </div>
+        {(dayTarget || (streak ?? 0) > 1) && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+            {(streak ?? 0) > 1 && (
+              <Badge>
+                <Flame size={10} /> {streak} days logged in a row
+              </Badge>
+            )}
+            {dayTarget && <Badge tone="brand">{dayTarget}</Badge>}
+          </div>
+        )}
       </Card>
 
-      <QuickActions onPick={(p) => navigate(p)} />
+      <QuickActions onPick={(p) => add(p)} />
 
       <SectionTitle
         action={
@@ -92,26 +150,27 @@ export default function Today() {
         Eaten today
       </SectionTitle>
 
-      {byMeal.length === 0 ? (
-        <Card className="py-2">
-          <EmptyState
-            icon={<Plus size={28} />}
-            title="Nothing logged yet"
-            body="Photo, dictation, barcode or search — whichever is quickest."
-            action={
-              <Button variant="primary" onClick={() => navigate('/add')}>
-                Add food
-              </Button>
-            }
-          />
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {byMeal.map(({ meal, items }) => (
-            <MealGroup key={meal} meal={meal} items={items} />
-          ))}
-        </div>
+      {entries.length === 0 && previousDay && (
+        <button
+          onClick={() => void copyDay(previousDay, date)}
+          className="mb-3 flex w-full items-center justify-center gap-2 rounded-tile border border-line bg-surface py-2.5 text-[0.8125rem] font-semibold text-txt-2 active:bg-surface-2"
+        >
+          <Copy size={14} /> Copy everything from {inlineDate(previousDay, false)}
+        </button>
       )}
+
+      <div className="space-y-3">
+        {byMeal.map(({ meal, items }) => (
+          <MealGroup
+            key={meal}
+            date={date}
+            meal={meal}
+            items={items}
+            onAdd={() => add('/add', meal)}
+            onEdit={setEditing}
+          />
+        ))}
+      </div>
 
       <SectionTitle
         action={
@@ -176,12 +235,22 @@ export default function Today() {
         )}
       </Card>
 
+      {plan.targetSource !== 'manual' && isToday(date) && (
+        <p className="mt-3 px-1 text-[0.6875rem] leading-relaxed text-txt-3">
+          {plan.targetSource === 'checkin'
+            ? `Targets are fixed until the next check-in ${inlineDate(plan.nextCheckin)}.`
+            : `Targets come from a formula until the first check-in ${inlineDate(plan.nextCheckin)}.`}
+        </p>
+      )}
+
       <WeightSheet
         open={weightOpen}
         date={date}
         current={currentKg}
         onClose={() => setWeightOpen(false)}
       />
+      {checkinOpen && <CheckinSheet onClose={() => setCheckinOpen(false)} />}
+      {editing && <EntrySheet entry={editing} onClose={() => setEditing(null)} />}
     </Screen>
   )
 }
@@ -209,31 +278,66 @@ function QuickActions({ onPick }: { onPick: (path: string) => void }) {
   )
 }
 
-function MealGroup({ meal, items }: { meal: MealSlot; items: LogEntry[] }) {
+function MealGroup({
+  date,
+  meal,
+  items,
+  onAdd,
+  onEdit,
+}: {
+  date: string
+  meal: MealSlot
+  items: LogEntry[]
+  onAdd: () => void
+  onEdit: (e: LogEntry) => void
+}) {
   const total = items.reduce((s, e) => s + e.nutrients.kcal, 0)
+  // Offer the last time this meal was logged — most breakfasts repeat.
+  const lastDay = useLiveQuery(
+    () => (items.length === 0 ? lastDayWithMeal(date, meal) : undefined),
+    [date, meal, items.length],
+  )
+
   return (
     <Card>
-      <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
+      <div className="flex items-center justify-between gap-2 px-4 py-1.5">
         <span className="label-micro text-txt-2">{MEAL_LABELS[meal]}</span>
-        <span className="numeric text-[0.8125rem] font-bold text-txt-3">{fmtKcal(total)} kcal</span>
+        <span className="flex items-center gap-1">
+          {items.length > 0 ? (
+            <span className="numeric text-[0.8125rem] font-bold text-txt-3">{fmtKcal(total)} kcal</span>
+          ) : (
+            lastDay && (
+              <button
+                onClick={() => void copyMeal(lastDay, meal, date)}
+                className="flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-[0.75rem] font-semibold text-txt-3 active:bg-surface-2"
+              >
+                <Copy size={13} /> Same as {inlineDate(lastDay, false)}
+              </button>
+            )
+          )}
+          <IconButton label={`Add to ${MEAL_LABELS[meal]}`} className="-mr-2 size-9 text-brand-text" onClick={onAdd}>
+            <Plus size={18} strokeWidth={2.5} />
+          </IconButton>
+        </span>
       </div>
-      <ul>
-        {items.map((e) => (
-          <EntryRow key={e.id} entry={e} />
-        ))}
-      </ul>
+      {items.length > 0 && (
+        <ul className="border-t border-line">
+          {items.map((e) => (
+            <EntryRow key={e.id} entry={e} onEdit={() => onEdit(e)} />
+          ))}
+        </ul>
+      )}
     </Card>
   )
 }
 
-function EntryRow({ entry }: { entry: LogEntry }) {
-  const [confirming, setConfirming] = useState(false)
+function EntryRow({ entry, onEdit }: { entry: LogEntry; onEdit: () => void }) {
   const prov = PROVENANCE_ERROR[entry.provenance]
   const band = entry.nutrients.kcal * prov.pct
 
   return (
-    <li className="flex items-start gap-3 border-b border-line/60 px-4 py-3 last:border-b-0">
-      <div className="min-w-0 flex-1">
+    <li className="border-b border-line/60 last:border-b-0">
+      <button onClick={onEdit} className="block w-full px-4 py-3 text-left active:bg-surface-2">
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 flex-1 text-[0.9375rem] font-bold leading-snug tracking-[-0.015em]">
             {entry.name}
@@ -245,9 +349,11 @@ function EntryRow({ entry }: { entry: LogEntry }) {
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="numeric text-[0.6875rem] font-semibold text-txt-3">
-            {num(Math.round(entry.resolvedAmount))} {entry.basis}
-          </span>
+          {entry.method !== 'quick' && (
+            <span className="numeric text-[0.6875rem] font-semibold text-txt-3">
+              {num(Math.round(entry.resolvedAmount))} {entry.basis}
+            </span>
+          )}
           {/* An estimate is shown as a range; a weighed entry is not. */}
           {prov.pct >= 0.15 && (
             <span className="numeric text-[0.6875rem] font-medium text-txt-4">
@@ -260,33 +366,72 @@ function EntryRow({ entry }: { entry: LogEntry }) {
         <div className="mt-1.5">
           <MacroChips n={entry.nutrients} />
         </div>
-      </div>
+      </button>
+    </li>
+  )
+}
 
-      {confirming ? (
-        <div className="flex shrink-0 flex-col gap-1">
-          <button
-            className="rounded-lg bg-bad/15 px-2 py-1 text-[0.6875rem] font-medium text-bad"
-            onClick={() => void deleteEntry(entry.id)}
+/** Change the amount, move it to another meal, or remove it. */
+function EntrySheet({ entry, onClose }: { entry: LogEntry; onClose: () => void }) {
+  const fixed = entry.method === 'quick'
+  const [amount, setAmount] = useState(String(Math.round(entry.resolvedAmount)))
+  const [meal, setMeal] = useState<MealSlot>(entry.meal)
+
+  const grams = Math.max(0, parseNumber(amount) ?? 0)
+  // Preview by scaling the stored snapshot, so it matches what save will do.
+  const preview =
+    fixed || entry.resolvedAmount <= 0
+      ? entry.nutrients
+      : scale(scale(entry.nutrients, 100 / entry.resolvedAmount), grams * 100)
+
+  const save = async () => {
+    if (!fixed && grams > 0 && Math.round(grams) !== Math.round(entry.resolvedAmount)) {
+      await updateEntryAmount(entry.id, grams, entry.basis)
+    }
+    if (meal !== entry.meal) await moveEntry(entry.id, meal)
+    onClose()
+  }
+
+  return (
+    <Sheet open onClose={onClose} title={entry.name}>
+      <div className="space-y-4 pb-2">
+        <Segmented
+          options={MEAL_SLOTS.map((m) => ({ value: m, label: MEAL_LABELS[m] }))}
+          value={meal}
+          onChange={setMeal}
+        />
+        {!fixed && (
+          <div>
+            <label className="mb-1.5 block text-[0.8125rem] text-txt-2">Amount ({entry.basis})</label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="text-center text-xl font-semibold"
+            />
+          </div>
+        )}
+        <div className="flex items-center justify-between rounded-tile border border-line bg-surface-2 px-3.5 py-3">
+          <span className="numeric text-[1.0625rem] font-extrabold">{fmtKcal(preview.kcal)} kcal</span>
+          <MacroChips n={preview} />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="danger"
+            onClick={() => {
+              void deleteEntry(entry.id)
+              onClose()
+            }}
           >
             Delete
-          </button>
-          <button
-            className="px-2 py-1 text-[0.6875rem] text-txt-3"
-            onClick={() => setConfirming(false)}
-          >
-            Cancel
-          </button>
+          </Button>
+          <Button variant="primary" className="flex-1" disabled={!fixed && grams <= 0} onClick={() => void save()}>
+            Save
+          </Button>
         </div>
-      ) : (
-        <IconButton
-          label={`Delete ${entry.name}`}
-          className="-mr-2 size-8"
-          onClick={() => setConfirming(true)}
-        >
-          <Trash2 size={15} />
-        </IconButton>
-      )}
-    </li>
+      </div>
+    </Sheet>
   )
 }
 

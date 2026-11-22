@@ -1,28 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Cloud, HardDrive, Search, ScanLine, X } from 'lucide-react'
+import { BookOpen, ChevronLeft, Cloud, HardDrive, Pencil, PencilLine, Search, ScanLine, Star, X, Zap } from 'lucide-react'
 import { Badge, Button, Card, EmptyState, IconButton, Input, Screen, Segmented, Sheet, Spinner } from '../components/ui'
 import { MacroChips } from '../components/MacroBars'
-import { todayKey } from '../lib/date'
+import { CustomFoodSheet, QuickAddSheet } from '../components/FoodSheets'
+import { MEAL_LABELS } from '../lib/meals'
+import { humanDate, isToday } from '../lib/date'
+import { logDate, logMeal } from '../lib/logTarget'
 import { altName, kcal as fmtKcal, num } from '../lib/format'
 import { scale } from '../lib/nutrition'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { getProfile } from '../lib/db'
-import { addEntry, searchLocalFoods, upsertFood } from '../lib/repo'
+import { db, getProfile } from '../lib/db'
+import { addEntry, searchLocalFoods, toggleFavorite, upsertFood } from '../lib/repo'
 import { MEAL_SLOTS, type Food, type MealSlot } from '../lib/types'
 import { OffError, isOnline, searchProducts, type NormalisedProduct } from '../services/openfoodfacts'
-
-const MEAL_LABELS: Record<MealSlot, string> = {
-  breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack',
-}
-
-function currentMeal(): MealSlot {
-  const h = new Date().getHours()
-  if (h < 10.5) return 'breakfast'
-  if (h < 15) return 'lunch'
-  if (h < 21) return 'dinner'
-  return 'snack'
-}
 
 export default function AddFood() {
   const navigate = useNavigate()
@@ -32,6 +23,12 @@ export default function AddFood() {
   const [searching, setSearching] = useState(false)
   const [remoteError, setRemoteError] = useState<string | null>(null)
   const [picked, setPicked] = useState<Food | null>(null)
+  const [sheet, setSheet] = useState<'quick' | 'custom' | null>(null)
+  const favorites = useLiveQuery(
+    async () => (await db.foods.filter((f) => !!f.favorite && !f.deleted).toArray()).sort((a, b) => a.name.localeCompare(b.name)),
+    [],
+  )
+  const date = logDate()
   const abortRef = useRef<AbortController | null>(null)
 
   // Local results are instant and free, so they update on every keystroke.
@@ -66,17 +63,20 @@ export default function AddFood() {
 
   const results = useMemo(() => {
     const seen = new Set(local.map((f) => f.barcode).filter(Boolean))
+    // With no query the favourites are listed above, so do not repeat them.
+    const pinned = new Set(query.trim() ? [] : (favorites ?? []).map((f) => f.id))
     return [
-      ...local.map((f) => ({ food: f, source: 'local' as const, warnings: [] as string[] })),
+      ...local.filter((f) => !pinned.has(f.id)).map((f) => ({ food: f, source: 'local' as const, warnings: [] as string[] })),
       ...remote
         .filter((r) => !seen.has(r.food.barcode))
         .map((r) => ({ food: r.food, source: 'off' as const, warnings: r.warnings })),
     ]
-  }, [local, remote])
+  }, [local, remote, favorites, query])
 
   return (
     <Screen
       title="Add food"
+      subtitle={isToday(date) ? undefined : `Logging to ${humanDate(date)}`}
       left={
         <IconButton label="Back" onClick={() => navigate(-1)}>
           <ChevronLeft size={20} />
@@ -123,9 +123,42 @@ export default function AddFood() {
           {isOnline()
             ? searching
               ? 'Searching Open Food Facts…'
-              : `Search "${query}" online (Aldi, REWE, dm, EDEKA …)`
+              : `Search "${query.trim().slice(0, 22)}" in supermarket products`
             : 'Offline — local results only'}
         </button>
+      )}
+
+      {!query.trim() && (
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {[
+            { key: 'quick', icon: Zap, label: 'Quick add', run: () => setSheet('quick') },
+            { key: 'custom', icon: PencilLine, label: 'New food', run: () => setSheet('custom') },
+            { key: 'recipes', icon: BookOpen, label: 'Recipes', run: () => navigate('/recipes') },
+          ].map((a) => (
+            <button
+              key={a.key}
+              onClick={a.run}
+              className="flex flex-col items-center gap-1.5 rounded-tile border border-line bg-surface py-3 transition-colors active:bg-surface-2"
+            >
+              <a.icon size={17} strokeWidth={2.25} className="text-brand-text" />
+              <span className="label-micro text-[0.5625rem] text-txt-2">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!query.trim() && favorites && favorites.length > 0 && (
+        <>
+          <p className="label-micro mb-2 mt-5 text-txt-3">Favourites</p>
+          <ul className="space-y-2">
+            {favorites.map((food) => (
+              <li key={food.id}>
+                <FoodRow food={food} source="local" warnings={[]} onPick={setPicked} />
+              </li>
+            ))}
+          </ul>
+          {results.length > 0 && <p className="label-micro mb-0 mt-5 text-txt-3">Recent</p>}
+        </>
       )}
 
       {remoteError && (
@@ -135,68 +168,105 @@ export default function AddFood() {
       )}
 
       {results.length === 0 ? (
+        // Favourites already fill the screen; an empty-state under them is noise.
+        !query.trim() && favorites && favorites.length > 0 ? null : (
         <EmptyState
           icon={<Search size={28} />}
           title={query ? 'No matches' : 'Recently used will appear here'}
           body={
             query
-              ? 'Try the online search, or scan the barcode.'
+              ? 'Try the online search, scan the barcode, or enter it from the label.'
               : 'Search for a food, or scan a package.'
           }
+          action={
+            query ? (
+              <Button onClick={() => setSheet('custom')}>
+                <PencilLine size={15} /> Create "{query.trim().slice(0, 24)}"
+              </Button>
+            ) : undefined
+          }
         />
+        )
       ) : (
         <ul className="mt-3 space-y-2">
           {results.map(({ food, source, warnings }) => (
             <li key={food.id}>
-              <button
-                onClick={() => setPicked(food)}
-                className="flex w-full items-center gap-3 rounded-tile border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.9375rem] font-bold leading-snug tracking-[-0.015em]">
-                    {food.name || food.nameDe}
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {food.brand && (
-                      <span className="truncate text-[0.6875rem] text-txt-3">{food.brand}</span>
-                    )}
-                    {/* Keep the German name visible: it is what is on the packet. */}
-                    {altName(food) && (
-                      <span className="truncate text-[0.6875rem] text-txt-4">{altName(food)}</span>
-                    )}
-                    {food.retailer && <Badge tone="brand">{food.retailer}</Badge>}
-                    {/* Raw vs cooked changes the numbers by ~30% for meat, so
-                        it belongs on the row, not buried in the detail sheet. */}
-                    {food.state !== 'as_sold' && (
-                      <Badge tone={food.state === 'cooked' ? 'ok' : 'neutral'}>{food.state}</Badge>
-                    )}
-                    {source === 'local' ? (
-                      <Badge>
-                        <HardDrive size={9} /> local
-                      </Badge>
-                    ) : (
-                      <Badge>OFF</Badge>
-                    )}
-                    {warnings.length > 0 && <Badge tone="warn">check data</Badge>}
-                  </div>
-                  <div className="mt-1.5">
-                    <MacroChips n={food.per100} />
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="numeric text-[1.0625rem] font-extrabold">
-                    {fmtKcal(food.per100.kcal)}
-                  </div>
-                  <div className="text-[0.625rem] font-semibold text-txt-4">/100 {food.basis}</div>
-                </div>
-              </button>
+              <FoodRow food={food} source={source} warnings={warnings} onPick={setPicked} />
             </li>
           ))}
         </ul>
       )}
 
       {picked && <PortionSheet food={picked} onClose={() => setPicked(null)} onDone={() => navigate('/')} />}
+      {sheet === 'quick' && <QuickAddSheet onClose={() => setSheet(null)} onDone={() => navigate('/')} />}
+      {sheet === 'custom' && (
+        <CustomFoodSheet
+          initialName={query.trim()}
+          onClose={() => setSheet(null)}
+          onSaved={(food) => {
+            setSheet(null)
+            setPicked(food)
+          }}
+        />
+      )}
     </Screen>
+  )
+}
+
+function FoodRow({
+  food,
+  source,
+  warnings,
+  onPick,
+}: {
+  food: Food
+  source: 'local' | 'off'
+  warnings: string[]
+  onPick: (food: Food) => void
+}) {
+  return (
+    <button
+      onClick={() => onPick(food)}
+      className="flex w-full items-center gap-3 rounded-tile border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-2"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[0.9375rem] font-bold leading-snug tracking-[-0.015em]">
+          {food.name || food.nameDe}
+        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {food.brand && (
+            <span className="truncate text-[0.6875rem] text-txt-3">{food.brand}</span>
+          )}
+          {/* Keep the German name visible: it is what is on the packet. */}
+          {altName(food) && (
+            <span className="truncate text-[0.6875rem] text-txt-4">{altName(food)}</span>
+          )}
+          {food.retailer && <Badge tone="brand">{food.retailer}</Badge>}
+          {/* Raw vs cooked changes the numbers by ~30% for meat, so
+              it belongs on the row, not buried in the detail sheet. */}
+          {food.state !== 'as_sold' && (
+            <Badge tone={food.state === 'cooked' ? 'ok' : 'neutral'}>{food.state}</Badge>
+          )}
+          {source === 'local' ? (
+            <Badge>
+              <HardDrive size={9} /> local
+            </Badge>
+          ) : (
+            <Badge>OFF</Badge>
+          )}
+          {warnings.length > 0 && <Badge tone="warn">check data</Badge>}
+        </div>
+        <div className="mt-1.5">
+          <MacroChips n={food.per100} />
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div className="numeric text-[1.0625rem] font-extrabold">
+          {fmtKcal(food.per100.kcal)}
+        </div>
+        <div className="text-[0.625rem] font-semibold text-txt-4">/100 {food.basis}</div>
+      </div>
+    </button>
   )
 }
 
@@ -210,7 +280,10 @@ export function PortionSheet({
   onDone: () => void
 }) {
   const profile = useLiveQuery(() => getProfile(), [])
-  const [meal, setMeal] = useState<MealSlot>(currentMeal())
+  // Read the stored row so the star reflects taps made while the sheet is open.
+  const stored = useLiveQuery(() => db.foods.get(food.id), [food.id])
+  const [editing, setEditing] = useState(false)
+  const [meal, setMeal] = useState<MealSlot>(logMeal())
   const defaultServing = food.servings.find((s) => s.isDefault) ?? food.servings[0]
   const [servingLabel, setServingLabel] = useState(defaultServing?.label ?? '')
   const [count, setCount] = useState('1')
@@ -237,7 +310,7 @@ export function PortionSheet({
   const save = async () => {
     await upsertFood(food)
     await addEntry({
-      date: todayKey(),
+      date: logDate(),
       meal,
       food,
       amount: qty,
@@ -250,10 +323,46 @@ export function PortionSheet({
     onDone()
   }
 
+  const toggleFav = async () => {
+    // A product from the online search is not in the database until it is used.
+    await upsertFood(food)
+    await toggleFavorite(food.id)
+  }
+
+  if (editing) {
+    return <CustomFoodSheet food={stored ?? food} onClose={() => setEditing(false)} onSaved={onClose} />
+  }
+
   return (
-    <Sheet open onClose={onClose} title={food.name || food.nameDe}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={
+        <div className="flex items-start justify-between gap-3">
+          <span className="min-w-0">{food.name || food.nameDe}</span>
+          <span className="-mt-1 flex shrink-0">
+            {food.source === 'custom' && !food.id.startsWith('recipe:') && (
+              <IconButton label="Edit food" className="size-9" onClick={() => setEditing(true)}>
+                <Pencil size={16} />
+              </IconButton>
+            )}
+            <IconButton
+              label={stored?.favorite ? 'Remove from favourites' : 'Add to favourites'}
+              className="size-9"
+              onClick={() => void toggleFav()}
+            >
+              <Star
+                size={18}
+                className={stored?.favorite ? 'text-fat' : undefined}
+                fill={stored?.favorite ? 'currentColor' : 'none'}
+              />
+            </IconButton>
+          </span>
+        </div>
+      }
+    >
       <div className="space-y-4 pb-2">
-        {food.brand && <p className="-mt-2 text-[0.8125rem] text-txt-3">{food.brand}</p>}
+        {food.brand && <p className="text-[0.8125rem] font-semibold text-txt-3">{food.brand}</p>}
 
         <Segmented
           options={MEAL_SLOTS.map((m) => ({ value: m, label: MEAL_LABELS[m] }))}
