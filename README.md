@@ -110,11 +110,13 @@ can serve it. Nothing runs on a server.
 
 **GitHub Pages (free, already wired up)**
 
-1. In the repository, open **Settings → Pages** and set **Source** to
-   **GitHub Actions**. This is a one-time switch; without it the deploy job
-   fails with a 404 from the Pages API.
-2. Merge to `main`. The workflow in `.github/workflows/deploy.yml` tests,
-   builds and publishes to `https://<user>.github.io/<repo>/`.
+Every push to `main` runs `.github/workflows/deploy.yml`, which tests, builds
+and force-pushes `dist/` to the `gh-pages` branch. GitHub Pages serves that
+branch at `https://<user>.github.io/<repo>/`.
+
+On a fresh fork, check **Settings → Pages**: the source should read "Deploy
+from a branch", branch `gh-pages`, folder `/ (root)`. GitHub sets this itself
+the first time the branch appears.
 
 **Your own domain (optional)**
 
