@@ -4,7 +4,7 @@ import { Camera, ChevronLeft, Info, Images } from 'lucide-react'
 import { Button, Card, IconButton, Screen, Spinner } from '../components/ui'
 import { PlateEditor } from '../components/PlateEditor'
 import { newId } from '../lib/db'
-import { todayKey } from '../lib/date'
+import { logDate, logMeal } from '../lib/logTarget'
 import { addEntry } from '../lib/repo'
 import type { MealSlot } from '../lib/types'
 import { AiError } from '../services/ai/client'
@@ -12,14 +12,6 @@ import { analysePhoto, type PhotoAnalysis } from '../services/ai/photo'
 import type { ResolvedItem } from '../services/ai/resolve'
 
 /** Meal slot implied by the clock, so the common case needs no tap. */
-function currentMeal(): MealSlot {
-  const h = new Date().getHours()
-  if (h < 10.5) return 'breakfast'
-  if (h < 15) return 'lunch'
-  if (h < 21) return 'dinner'
-  return 'snack'
-}
-
 export default function PhotoLog() {
   const navigate = useNavigate()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -27,7 +19,7 @@ export default function PhotoLog() {
   const [error, setError] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [meal, setMeal] = useState<MealSlot>(currentMeal())
+  const [meal, setMeal] = useState<MealSlot>(logMeal())
   const [busy, setBusy] = useState(false)
 
   const run = async (file: File, hint?: string) => {
@@ -65,7 +57,7 @@ export default function PhotoLog() {
     const captureId = newId()
     for (const item of items) {
       await addEntry({
-        date: todayKey(),
+        date: logDate(),
         meal,
         food: item.food,
         name: item.food?.name ?? item.food?.nameDe ?? item.raw.name,

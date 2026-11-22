@@ -390,9 +390,40 @@ export function adaptiveExpenditure(args: {
  * ------------------------------------------------------------------ */
 
 /**
- * Protein first, fat to a floor, carbs fill the rest — the standard
- * evidence-based ordering, because protein and essential fat have hard
- * requirements and carbohydrate does not.
+ * Lowest fat intake any style will prescribe, g per kg body mass.
+ *
+ * Origin: sports-nutrition practice guidance (Helms et al. 2014 give 15–30 %
+ * of energy for physique athletes), not a measured physiological threshold —
+ * the strict requirement is only a few grams of essential fatty acids. It
+ * breaks down at very high body-fat levels, where per-kg scaling overshoots.
+ */
+export const FAT_FLOOR_PER_KG = 0.6
+
+/** Carbohydrate ceiling for the ketogenic style, g/day (conventional 20–50 g). */
+export const KETO_CARBS_G = 30
+
+/**
+ * Calories for the goal: expenditure plus the daily energy the target rate of
+ * weight change implies, bounded below.
+ *
+ * Two floors apply. Relative: never below 65 % of expenditure, because deeper
+ * deficits cost lean mass and adherence faster than they add fat loss.
+ * Absolute: `kcalFloor`, a convention (1,200 kcal is the common figure) that
+ * exists because very low intakes make micronutrient adequacy hard — it is a
+ * safety margin, not a law, and the user can turn it off.
+ */
+export function goalCalories(tdee: number, rateKgPerWeek: number, kcalFloor = 0): number {
+  const dailyDelta = (rateKgPerWeek * KCAL_PER_KG) / 7
+  return Math.max(kcalFloor, tdee * 0.65, tdee + dailyDelta)
+}
+
+/**
+ * Protein first, then the remaining calories divided by the chosen style.
+ *
+ * Protein comes first because it is the only macro with a requirement that
+ * scales with the goal; how the rest splits between carbohydrate and fat
+ * makes no measurable difference to weight change at equal calories and
+ * protein, so it is exposed as a preference rather than optimised.
  */
 export function computeTargets(args: {
   profile: Profile
@@ -403,23 +434,133 @@ export function computeTargets(args: {
   const { profile, tdee, currentKg, bodyFatPct } = args
   if (profile.manualTargets) return profile.manualTargets
 
-  const dailyDelta = (profile.rateKgPerWeek * KCAL_PER_KG) / 7
-  // Never prescribe below ~65% of expenditure; deeper deficits cost lean mass
-  // and adherence without speeding fat loss meaningfully.
-  const kcal = Math.max(tdee * 0.65, tdee + dailyDelta)
+  const kcal = goalCalories(tdee, profile.rateKgPerWeek, profile.kcalFloor ?? 0)
 
   // Lean mass is the better basis for protein when body fat is known.
   const proteinBasisKg = bodyFatPct != null ? currentKg * (1 - bodyFatPct / 100) * 1.15 : currentKg
-  const protein = Math.round(proteinBasisKg * profile.proteinPerKg)
-  const fat = Math.round(currentKg * profile.fatPerKg)
+  let protein = Math.round(proteinBasisKg * profile.proteinPerKg)
+  // On a very low budget protein alone can exceed it; cap it so the floor for
+  // fat still fits and the macros cannot sum past the calorie target.
+  const fatFloor = Math.round(currentKg * FAT_FLOOR_PER_KG)
+  const maxProtein = Math.floor((kcal - fatFloor * ENERGY_FACTORS.fat) / ENERGY_FACTORS.protein)
+  protein = Math.max(0, Math.min(protein, maxProtein))
 
-  const kcalFromPF = protein * ENERGY_FACTORS.protein + fat * ENERGY_FACTORS.fat
-  const carbs = Math.max(0, Math.round((kcal - kcalFromPF) / ENERGY_FACTORS.carbs))
+  const rest = Math.max(0, kcal - protein * ENERGY_FACTORS.protein)
+  let fat: number
+  switch (profile.macroStyle ?? 'balanced') {
+    case 'low_fat':
+      // The floor, or a fifth of total energy if that is higher.
+      fat = Math.max(fatFloor, (kcal * 0.2) / ENERGY_FACTORS.fat)
+      break
+    case 'low_carb':
+      // Carbohydrate held to a fifth of energy and never above 150 g.
+      fat = (rest - Math.min(150, (kcal * 0.2) / ENERGY_FACTORS.carbs) * ENERGY_FACTORS.carbs) / ENERGY_FACTORS.fat
+      break
+    case 'keto':
+      fat = (rest - KETO_CARBS_G * ENERGY_FACTORS.carbs) / ENERGY_FACTORS.fat
+      break
+    default:
+      // Balanced: the non-protein calories split evenly by energy.
+      fat = (rest * 0.5) / ENERGY_FACTORS.fat
+  }
+  fat = Math.round(Math.max(fatFloor, Math.min(fat, rest / ENERGY_FACTORS.fat)))
+  const carbs = Math.max(0, Math.round((rest - fat * ENERGY_FACTORS.fat) / ENERGY_FACTORS.carbs))
 
   // 14 g fibre per 1000 kcal — the DGE / IOM recommendation.
   const fiber = Math.round((kcal / 1000) * 14)
 
   return { kcal: Math.round(kcal), protein, carbs, fat, fiber }
+}
+
+/**
+ * Calorie shifting: move energy toward chosen weekdays without changing the
+ * weekly total.
+ *
+ * With h high days each at mean × (1 + b), the other 7 − h days must sit at
+ * mean × (1 − b·h / (7 − h)) for the week to sum to 7 × mean. Protein stays
+ * fixed — it is a daily requirement — and the shift is taken out of, or added
+ * to, carbohydrate and fat in proportion to their energy.
+ */
+export function shiftForWeekday(
+  base: MacroTargets,
+  weekday: number,
+  highDays: number[] = [],
+  boost = 0,
+): MacroTargets {
+  const h = new Set(highDays.filter((d) => d >= 0 && d <= 6)).size
+  if (h === 0 || h === 7 || boost <= 0) return base
+  const factor = highDays.includes(weekday) ? 1 + boost : 1 - (boost * h) / (7 - h)
+  const kcal = base.kcal * factor
+  const proteinKcal = base.protein * ENERGY_FACTORS.protein
+  const baseRest = base.kcal - proteinKcal
+  if (baseRest <= 0) return base
+  const k = Math.max(0, kcal - proteinKcal) / baseRest
+  return {
+    kcal: Math.round(kcal),
+    protein: base.protein,
+    carbs: Math.round(base.carbs * k),
+    fat: Math.round(base.fat * k),
+    fiber: Math.round((kcal / 1000) * 14),
+  }
+}
+
+/**
+ * Goal rates offered in the UI, as a fraction of body mass per week.
+ *
+ * Expressed relative to body mass because the same absolute rate is a very
+ * different deficit for a 60 kg and a 120 kg person. The loss range is the
+ * 0.25–1 %/week band used across the sports-nutrition literature (e.g. Garthe
+ * et al. 2011 compared 0.7 % and 1.4 % and found the slower rate kept more
+ * lean mass). The gain range is narrower because muscle gain is rate-limited
+ * and a faster surplus mostly adds fat.
+ */
+export const RATE_PRESETS = {
+  lose: [
+    { pct: 0.0025, label: 'Slow' },
+    { pct: 0.005, label: 'Standard' },
+    { pct: 0.0075, label: 'Fast' },
+    { pct: 0.01, label: 'Aggressive' },
+  ],
+  gain: [
+    { pct: 0.001, label: 'Lean' },
+    { pct: 0.0025, label: 'Standard' },
+    { pct: 0.005, label: 'Fast' },
+  ],
+} as const
+
+/** Days until the goal weight at the planned rate, or null when not applicable. */
+export function daysToGoal(currentKg: number, goalKg: number | undefined, rateKgPerWeek: number): number | null {
+  if (goalKg == null || rateKgPerWeek === 0) return null
+  const delta = goalKg - currentKg
+  // Already past the goal, or the rate points away from it.
+  if (delta === 0 || Math.sign(delta) !== Math.sign(rateKgPerWeek)) return null
+  return Math.ceil((delta / rateKgPerWeek) * 7)
+}
+
+/**
+ * Expenditure as it would have been estimated on each day of a range, so the
+ * chart shows how the estimate moved rather than only where it ended up.
+ */
+export function expenditureSeries(args: {
+  profile: Profile
+  intake: Array<{ date: DateKey; kcal: number }>
+  trend: Array<{ date: DateKey; trendKg: number }>
+  bodyFatPct?: number
+}): Array<{ date: DateKey; tdee: number; dataWeight: number }> {
+  const { profile, intake, trend, bodyFatPct } = args
+  const out: Array<{ date: DateKey; tdee: number; dataWeight: number }> = []
+  for (let i = 0; i < trend.length; i++) {
+    const upTo = trend[i].date
+    const est = adaptiveExpenditure({
+      profile,
+      intake: intake.filter((d) => d.date <= upTo),
+      trend: trend.slice(0, i + 1),
+      currentKg: trend[i].trendKg,
+      bodyFatPct,
+    })
+    out.push({ date: upTo, tdee: est.tdee, dataWeight: est.dataWeight })
+  }
+  return out
 }
 
 export function remaining(targets: MacroTargets, consumed: Nutrients): MacroTargets {
@@ -440,4 +581,41 @@ export function macroSplit(n: Nutrients): { protein: number; carbs: number; fat:
   const total = p + c + f
   if (total <= 0) return { protein: 0, carbs: 0, fat: 0 }
   return { protein: p / total, carbs: c / total, fat: f / total }
+}
+
+/* ------------------------------------------------------------------ *
+ * Recipes
+ * ------------------------------------------------------------------ */
+
+export interface RecipeTotals {
+  total: Nutrients
+  /** Mass the per-100 g figures are based on: cooked weight if given, else the raw sum. */
+  grams: number
+  perPortion: Nutrients
+  per100: Nutrients
+}
+
+/**
+ * Nutrients for a recipe.
+ *
+ * Cooking changes mass but not energy: water leaves or enters, the macros
+ * stay in the pot. So the total is the sum of the ingredients, and the
+ * per-100 g figure divides that by the weight of the finished dish when the
+ * user weighed it, or by the raw sum when they did not.
+ */
+export function recipeTotals(recipe: {
+  ingredients: Array<{ resolvedAmount: number; nutrients: Nutrients }>
+  portions: number
+  totalGrams?: number
+}): RecipeTotals {
+  const total = recipe.ingredients.length ? sum(recipe.ingredients.map((i) => i.nutrients)) : { ...ZERO }
+  const rawGrams = recipe.ingredients.reduce((s, i) => s + i.resolvedAmount, 0)
+  const grams = recipe.totalGrams && recipe.totalGrams > 0 ? recipe.totalGrams : rawGrams
+  const portions = Math.max(1, recipe.portions || 1)
+  return {
+    total,
+    grams,
+    perPortion: scale(total, 100 / portions),
+    per100: grams > 0 ? scale(total, 10000 / grams) : { ...ZERO },
+  }
 }

@@ -30,7 +30,10 @@ jobs:
         env:
           # GitHub Pages serves a project site from /<repo>/, so the bundle,
           # the manifest and the service worker scope all need that prefix.
-          BASE_PATH: /${{ github.event.repository.name }}/
+          # With a custom domain the site is at the root instead: set the
+          # repository variable BASE_PATH to "/" (Settings → Secrets and
+          # variables → Actions → Variables).
+          BASE_PATH: ${{ vars.BASE_PATH || format('/{0}/', github.event.repository.name) }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

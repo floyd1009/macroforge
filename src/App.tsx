@@ -12,6 +12,7 @@ const AddFood = lazy(() => import('./screens/AddFood'))
 const Scan = lazy(() => import('./screens/Scan'))
 const PhotoLog = lazy(() => import('./screens/PhotoLog'))
 const VoiceLog = lazy(() => import('./screens/VoiceLog'))
+const Recipes = lazy(() => import('./screens/Recipes'))
 const Trends = lazy(() => import('./screens/Trends'))
 const Train = lazy(() => import('./screens/Train'))
 const SettingsScreen = lazy(() => import('./screens/Settings'))
@@ -63,8 +64,11 @@ export default function App() {
           <Route path="/scan" element={<Scan />} />
           <Route path="/photo" element={<PhotoLog />} />
           <Route path="/voice" element={<VoiceLog />} />
+          <Route path="/recipes" element={<Recipes />} />
+          <Route path="/recipes/:id" element={<Recipes />} />
           <Route path="/trends" element={<Trends />} />
-          <Route path="/train" element={<Train />} />
+          {/* Train owns everything under /train and routes it internally. */}
+          <Route path="/train/*" element={<Train />} />
           <Route path="/settings" element={<SettingsScreen />} />
         </Routes>
       </Suspense>

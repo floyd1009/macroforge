@@ -35,6 +35,6 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.11"
   },
-  "description": "Offline-first Makro- und Trainings-Tracker für Deutschland. Kein Konto, kein Server, Open Source.",
+  "description": "Offline-first macro and training tracker with adaptive targets. No account, no server, open source.",
   "license": "MIT"
 }
