@@ -55,7 +55,7 @@ export default function AddFood() {
       setRemote(await searchProducts(query, { signal: ctrl.signal }))
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      setRemoteError(e instanceof OffError ? e.message : 'Onlinesuche fehlgeschlagen')
+      setRemoteError(e instanceof OffError ? e.message : 'The online search failed. Try again in a moment.')
     } finally {
       setSearching(false)
     }

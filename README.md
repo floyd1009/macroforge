@@ -9,10 +9,27 @@ Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
 
 ## What it does
 
-- **Macro tracking** against adaptive targets that are measured, not guessed —
-  the app derives your real energy expenditure from what you logged and how
-  your weight actually moved, and tells you how much of that number is data
-  versus formula.
+**Nutrition**
+
+- **Adaptive expenditure, measured not guessed.** Calories out are derived
+  from what you logged and how your trend weight moved (intake minus the change
+  in stored energy at 7,700 kcal/kg), blended with a formula until about three
+  weeks of data exist. The app shows what share of the number is measured.
+- **Weekly check-in.** Targets are frozen between check-ins and change only
+  when you accept a new set. The check-in is adherence-neutral: next week's
+  target comes from measured expenditure, never from how close you were to
+  last week's target, and a week with too little data holds the estimate
+  rather than updating it from noise.
+- **Goal setup.** Lose, maintain or gain at a rate expressed as a share of
+  body weight per week, with an optional goal weight and a projected end date
+  at both the planned and the measured pace.
+- **Macro program.** Coached or manual targets; balanced, low-fat, low-carb or
+  keto split; four protein levels; a calorie floor; and optional higher-calorie
+  weekdays that leave the weekly total unchanged.
+- **Fast logging.** Search, barcode, quick add (calories and macros only),
+  custom foods from a label, recipes built from ingredients, favourites, and
+  one-tap copy of a meal or a whole day. Every path logs to the day you are
+  looking at.
 - **The German national food database, offline.** All 7,140 foods of the
   Bundeslebensmittelschlüssel 4.0 (Max Rubner-Institut, CC BY 4.0) ship with
   the app — 300 kB gzipped, imported into IndexedDB on first launch. That
@@ -21,14 +38,28 @@ Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
 - **German retail products** from Open Food Facts: ALDI, Lidl, REWE, EDEKA, dm,
   Kaufland, PENNY and Netto private labels, tagged with the chain they belong
   to. Search is bilingual — "Haferflocken" and "rolled oats" find the same row.
-- **Barcode scanning** with a manual-entry fallback.
 - **Photo logging** — describes what is on the plate and resolves it against
   real composition data, with an honest error band.
 - **Voice logging** via iOS keyboard dictation, parsing household measures in
   English *or* German — "two slices of Vollkornbrot", "a tbsp of oil",
   "anderthalb Brötchen" all resolve to grams against a hand-curated table.
-- **Training log** with e1RM estimates and weekly hard-set volume per muscle
-  group.
+- **Trends.** Scale weight against trend weight, expenditure over time, intake
+  and macro averages, check-in history, tape measurements and progress photos.
+
+**Training**
+
+- **Programs.** Bundled templates (full body, upper/lower, push-pull-legs and
+  hybrids) or your own, edited day by day: exercises, sets, rep range, target
+  reps in reserve and rest.
+- **Guided sessions.** Each set is prefilled with what you did last time and
+  what to aim for now. Tap to complete, and the rest timer starts on its own.
+- **Automatic progression.** Double progression: reach the top of the rep range
+  on every working set and the load goes up one step; otherwise aim for one
+  more rep. It is a programming convention, not a law — the rule is stated in
+  the app and you can always override the suggestion.
+- **Analysis.** Estimated 1RM over time and records per exercise, weekly hard
+  sets per muscle group against volume landmarks, full session history, and a
+  plate calculator.
 
 ## What it deliberately does not do
 
@@ -72,12 +103,42 @@ npm run dev
 npm run test
 ```
 
+## Deploying
+
+The app is a static site: `npm run build` produces `dist/`, and any static host
+can serve it. Nothing runs on a server.
+
+**GitHub Pages (free, already wired up)**
+
+1. In the repository, open **Settings → Pages** and set **Source** to
+   **GitHub Actions**. This is a one-time switch; without it the deploy job
+   fails with a 404 from the Pages API.
+2. Merge to `main`. The workflow in `.github/workflows/deploy.yml` tests,
+   builds and publishes to `https://<user>.github.io/<repo>/`.
+
+**Your own domain (optional)**
+
+Buy any domain, add it under **Settings → Pages → Custom domain**, and point a
+`CNAME` record for `www` (or `ALIAS`/`A` records for the apex) at
+`<user>.github.io`. Then add a repository variable `BASE_PATH` with the value
+`/` (**Settings → Secrets and variables → Actions → Variables**), because the
+site is now served from the root rather than `/<repo>/`, and re-run the deploy.
+HTTPS is issued automatically.
+A real HTTPS origin is required either way: the camera, the service worker and
+persistent storage are all unavailable on plain HTTP.
+
+**Any other static host**
+
+```bash
+npm run build
+```
+
+Upload `dist/`. Set `BASE_PATH` first if the site is not served from `/`.
+
 ## Putting it on your iPhone
 
-1. Push this repo to GitHub and enable **Settings → Pages → Source: GitHub
-   Actions**. The included workflow builds and deploys on every push to `main`.
-2. Open the resulting `https://<user>.github.io/<repo>/` URL **in Safari**.
-3. Share → **Add to Home Screen** → Add.
+1. Open the deployed URL **in Safari**.
+2. Share → **Add to Home Screen** → Add.
 
 Installing is not cosmetic. Safari's tracking prevention deletes all
 script-writable storage after seven days without interaction, and home-screen
