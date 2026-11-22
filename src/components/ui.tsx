@@ -31,7 +31,7 @@ export function Button({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const styles: Record<ButtonVariant, string> = {
     primary:
-      'bg-brand text-white active:bg-brand-dim disabled:bg-brand-dim/50 shadow-[0_1px_0_rgba(255,255,255,0.08)_inset]',
+      'bg-brand text-on-brand active:bg-brand-dim disabled:bg-brand-dim/50 shadow-[0_1px_0_rgba(255,255,255,0.08)_inset]',
     subtle: 'bg-surface-2 text-txt border border-line active:bg-surface-3',
     ghost: 'text-txt-2 active:bg-surface-2',
     danger: 'bg-transparent text-bad border border-bad/40 active:bg-bad/10',
@@ -212,7 +212,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           className={clsx(
             'min-h-9 flex-1 rounded-md px-2 text-[0.8125rem] font-bold tracking-tight transition-colors',
-            value === o.value ? 'bg-brand text-white' : 'text-txt-2 active:bg-surface-3',
+            value === o.value ? 'bg-brand text-on-brand' : 'text-txt-2 active:bg-surface-3',
           )}
         >
           {o.label}
@@ -332,7 +332,8 @@ export function IconButton({
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-2.5 mt-6 flex items-center justify-between gap-2">
-      <h2 className="label-micro text-txt-3">{children}</h2>
+      {/* Gold eyebrow labels, as in the house documents. */}
+      <h2 className="label-micro text-brand-text">{children}</h2>
       {action}
     </div>
   )

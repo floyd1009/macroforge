@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 /**
- * The reference apps this design copies both fail WCAG AA on their primary
- * button and on red text over a dark card. These tests exist so we cannot
- * regress into the same failure while editing the palette.
+ * Pins the palette to WCAG 2.1 AA so an edit to a token cannot quietly make
+ * a label unreadable. The accent is a light gold, so the pairing that matters
+ * is dark text on the gold fill, not white.
  */
 
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
@@ -32,12 +32,12 @@ export function contrast(a: string, b: string): number {
 const SURFACES = ['bg', 'surface', 'surface-2', 'surface-3'] as const
 
 describe('palette contrast (WCAG 2.1 AA)', () => {
-  it('white on the primary red button reaches 4.5:1', () => {
-    expect(contrast('#ffffff', token('brand'))).toBeGreaterThanOrEqual(4.5)
+  it.each(['brand', 'brand-bright', 'brand-dim'])('the label on a %s fill reaches 4.5:1', (fill) => {
+    expect(contrast(token('on-brand'), token(fill))).toBeGreaterThanOrEqual(4.5)
   })
 
-  it('white on the hover red still reaches 4.5:1', () => {
-    expect(contrast('#ffffff', token('brand-bright'))).toBeGreaterThanOrEqual(4.5)
+  it('white on the gold fill fails, which is why on-brand exists', () => {
+    expect(contrast('#ffffff', token('brand'))).toBeLessThan(3)
   })
 
   it.each(['txt', 'txt-2', 'txt-3'])('%s is readable on every surface', (name) => {
@@ -55,11 +55,24 @@ describe('palette contrast (WCAG 2.1 AA)', () => {
     },
   )
 
-  it('keeps brand red out of the macro palette so it never doubles as a status', () => {
+  it('keeps brand gold out of the macro palette so a bar never reads as chrome', () => {
     const brand = token('brand').toLowerCase()
     for (const m of ['protein', 'carb', 'fat', 'fiber']) {
       expect(token(m).toLowerCase()).not.toBe(brand)
     }
+  })
+
+  it('keeps fat amber visibly apart from brand gold', () => {
+    // Both are warm. They are told apart by saturation: the amber is vivid,
+    // the gold is muted. Guard that gap so neither drifts toward the other.
+    const sat = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      const max = Math.max(r, g, b)
+      const min = Math.min(r, g, b)
+      const l = (max + min) / 2
+      return max === min ? 0 : (max - min) / (1 - Math.abs(2 * l - 1))
+    }
+    expect(sat(token('fat')) - sat(token('brand'))).toBeGreaterThan(0.3)
   })
 
   it('separates macro hues enough to be told apart', () => {
