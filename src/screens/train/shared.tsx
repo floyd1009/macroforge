@@ -205,7 +205,7 @@ export function MuscleChips({
   const chip = (active: boolean) =>
     clsx(
       'shrink-0 rounded-full border px-3 py-1.5 text-[0.75rem] font-bold tracking-tight transition-colors',
-      active ? 'border-brand bg-brand text-white' : 'border-line bg-surface-2 text-txt-2 active:bg-surface-3',
+      active ? 'border-brand bg-brand text-on-brand' : 'border-line bg-surface-2 text-txt-2 active:bg-surface-3',
     )
   return (
     <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

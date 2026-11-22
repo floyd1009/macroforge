@@ -14,46 +14,46 @@
 }
 
 /* ------------------------------------------------------------------ *
- * MacroForge design tokens — "ember on charcoal".
- * Near-black backgrounds carry a slight red bias so the crimson accent
- * reads as part of the surface rather than pasted on top of grey.
+ * MacroForge design tokens — sand gold on graphite.
+ * The palette is measured from the house documents (deck and one-pager):
+ * page #0e0f11, card #1a1d21, rule #2a2d32, accent #d8c4a5. The neutrals
+ * carry a slight blue bias, which is what makes the warm accent read as
+ * gold rather than as beige.
  * ------------------------------------------------------------------ */
 @theme {
-  /* ── Surfaces: true-black OLED ramp ────────────────────────────────
-     Black rather than dark grey is what makes MacroFactor and Beastly
-     read as "dark red" — the crimson has nothing to compete with. */
-  --color-bg: #000000;
-  --color-surface: #141416;
-  --color-surface-2: #1f1f22;
-  --color-surface-3: #2a2a2e;
-  --color-track: #34343a;
-  --color-line: #2e2e33;
-  --color-line-strong: #3c3c43;
+  /* ── Surfaces: graphite ramp, each step lighter than the one it sits on ── */
+  --color-bg: #0e0f11;
+  --color-surface: #1a1d21;
+  --color-surface-2: #22252a;
+  --color-surface-3: #2a2d32;
+  --color-track: #383c43;
+  --color-line: #2a2d32;
+  --color-line-strong: #3a3e45;
 
-  /* ── Brand red — CTA fills and chrome only ─────────────────────────
-     Deliberately kept out of data. Red is simultaneously the brand, the
-     universal error signal and the shame colour in diet apps; letting it
-     into macro bars destroys all three meanings at once. The reference
-     palettes fail WCAG AA here (white on #ED1C24 is 4.38:1), so these
-     values are the accessible neighbours of the same hue. */
-  /* White label on --color-brand is 5.71:1 (AA); black is only 3.68:1. */
-  --color-brand: #c81e2d;
-  --color-brand-bright: #e02636;
-  --color-brand-dim: #9b1520;
-  --color-brand-text: #ff6b6b;
-  --color-brand-wash: #1a0708;
+  /* ── Brand gold — CTA fills and chrome only ────────────────────────
+     Kept out of the data colours, so a gold bar never has to be read as
+     either "brand" or "fat". It is a light colour, so labels on a gold
+     fill are dark: #0e0f11 on #d8c4a5 is 11.2:1, white would be 1.7:1.
+     Red is now free to mean exactly one thing, an error. */
+  --color-brand: #d8c4a5;
+  --color-brand-bright: #e7d6bb;
+  --color-brand-dim: #b9a687;
+  --color-brand-text: #d8c4a5;
+  --color-brand-wash: #211e18;
+  /* Text and icons placed on a brand fill. */
+  --color-on-brand: #0e0f11;
 
   /* ── Text ── */
-  --color-txt: #ffffff;
-  --color-txt-2: #a8a8b0;
-  /* #909098 is the darkest neutral that still clears 4.5:1 on --color-surface-3,
-     the lightest card we render text on. Anything greyer fails AA. */
-  --color-txt-3: #909098;
+  --color-txt: #f5f3ee;
+  --color-txt-2: #adafb5;
+  /* The darkest neutral that still clears 4.5:1 on --color-surface-3, the
+     lightest card we render text on. Anything greyer fails AA. */
+  --color-txt-3: #9a9da4;
   /* Decorative only — never used for text that has to be read. */
-  --color-txt-4: #6a6a73;
+  --color-txt-4: #6c7078;
 
   /* ── Macro hues. All pass AA on --color-surface-2. ── */
-  --color-kcal: #e6e6ea;
+  --color-kcal: #ece9e2;
   --color-protein: #6fb3ff;
   --color-carb: #a78bfa;
   --color-fat: #f2c14e;
@@ -173,7 +173,7 @@
 
   ::selection {
     background: var(--color-brand);
-    color: #fff;
+    color: var(--color-on-brand);
   }
 
   ::-webkit-scrollbar {

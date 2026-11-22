@@ -71,10 +71,10 @@ Installs to the iPhone home screen as a web app. Free to run and MIT-licensed.
 - **Treat a barcode as ground truth.** EU labelling law permits ±20 % tolerance
   on macros in the 10–40 g/100 g band, and label energy is *calculated*, not
   measured. Scanned entries carry a ±15 % band.
-- **Use red for data.** Red is the brand colour and the universal error colour;
-  putting it in macro bars would make the app read as judgemental and destroy
-  its error vocabulary. Macro colours are blue/violet/amber, and palette
-  contrast is pinned by tests so it cannot regress below WCAG AA.
+- **Use the brand colour for data.** The accent is a muted gold and stays on
+  buttons and labels. Macro colours are blue, violet and amber, and red means
+  only one thing, an error. Palette contrast is pinned by tests so it cannot
+  regress below WCAG AA.
 
 ## Accuracy work most trackers skip
 

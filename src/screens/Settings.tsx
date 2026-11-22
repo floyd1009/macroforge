@@ -437,7 +437,7 @@ function DayChip({ label, active, onClick }: { label: string; active: boolean; o
     <button
       onClick={onClick}
       className={`min-h-9 flex-1 rounded-md border text-[0.6875rem] font-bold transition-colors ${
-        active ? 'border-brand bg-brand text-white' : 'border-line bg-surface-2 text-txt-2 active:bg-surface-3'
+        active ? 'border-brand bg-brand text-on-brand' : 'border-line bg-surface-2 text-txt-2 active:bg-surface-3'
       }`}
     >
       {label}

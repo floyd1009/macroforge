@@ -36,7 +36,7 @@ export function TabBar() {
                 }}
                 aria-label="Add food"
                 className={clsx(
-                  'grid size-13 place-items-center rounded-xl bg-brand text-white',
+                  'grid size-13 place-items-center rounded-xl bg-brand text-on-brand',
                   'shadow-[0_6px_20px_-6px_var(--color-brand)] transition-transform active:scale-92',
                 )}
               >
@@ -51,7 +51,7 @@ export function TabBar() {
                 className={({ isActive }) =>
                   clsx(
                     'flex h-full flex-col items-center justify-center gap-1 pt-1 transition-colors',
-                    isActive ? 'text-brand-bright' : 'text-txt-4 active:text-txt-2',
+                    isActive ? 'text-brand-text' : 'text-txt-4 active:text-txt-2',
                   )
                 }
               >
