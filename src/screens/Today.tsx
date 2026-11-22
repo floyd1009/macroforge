@@ -5,7 +5,7 @@ import { Camera, ChevronLeft, ChevronRight, ClipboardCheck, Copy, Flame, Mic, Pl
 import { CheckinSheet } from '../components/CheckinSheet'
 import { CalorieHeader, MacroChips, MacroRows } from '../components/MacroBars'
 import { Badge, Button, Card, EmptyState, IconButton, Input, Screen, Segmented, Sheet, SectionTitle } from '../components/ui'
-import { addDays, humanDate, inlineDate, isFuture, isToday, todayKey } from '../lib/date'
+import { addDays, fromKey, humanDate, inlineDate, isFuture, isToday, todayKey } from '../lib/date'
 import { kcal as fmtKcal, kg as fmtKg, num, parseNumber, signed } from '../lib/format'
 import { setLogTarget } from '../lib/logTarget'
 import { scale } from '../lib/nutrition'
@@ -88,7 +88,7 @@ export default function Today() {
           {humanDate(date)}
         </button>
       }
-      subtitle={new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+      subtitle={fromKey(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
       left={
         <IconButton label="Previous day" onClick={() => setDate(addDays(date, -1))}>
           <ChevronLeft size={20} />
